@@ -2,6 +2,13 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Tailwind has no zinc-850; components use it for raised surfaces in dark mode.
+   Without this token, `dark:bg-zinc-850` generated nothing and those surfaces
+   fell back to their light-mode background. */
+@theme {
+  --color-zinc-850: #1f1f23;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;

@@ -1,3 +1,4 @@
+import Script from "next/script";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -33,9 +34,9 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} dark h-full antialiased`}
     >
       <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
+        {/* Apply the saved theme before first paint to avoid a light/dark flash */}
+        <Script id="theme-init" strategy="beforeInteractive">
+          {`
               (function() {
                 try {
                   var t = localStorage.getItem('bt_theme');
@@ -46,9 +47,8 @@ export default function RootLayout({
                   }
                 } catch(e) {}
               })();
-            `,
-          }}
-        />
+            `}
+        </Script>
       </head>
       <body className="min-h-full flex flex-col bg-slate-50 text-slate-900 dark:bg-zinc-950 dark:text-zinc-100 selection:bg-amber-500 selection:text-zinc-950 font-sans">
         <MswProvider>

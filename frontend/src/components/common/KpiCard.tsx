@@ -62,27 +62,20 @@ export function KpiCard({
 
   return (
     <Card
-      className={cn("relative overflow-hidden transition-all hover:border-zinc-300 dark:hover:border-zinc-700", {
-        "border-red-500/30 bg-red-500/[0.02]": status === "critical",
-        "border-amber-500/30 bg-amber-500/[0.02]": status === "warning",
-        "border-emerald-500/30 bg-emerald-500/[0.02]": status === "success",
+      className={cn("relative overflow-hidden", {
+        "border-red-500/40": status === "critical",
+        "border-amber-500/40": status === "warning",
       })}
     >
       <CardContent className="p-5">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-            {title}
-          </span>
-          {icon && (
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
-              {icon}
-            </div>
-          )}
+          <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">{title}</span>
+          {icon && <span className="text-zinc-400">{icon}</span>}
         </div>
 
-        <div className="mt-3 flex items-baseline justify-between">
+        <div className="mt-2 flex items-baseline justify-between">
           <div className="flex items-baseline gap-1.5">
-            <span className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 font-mono">
+            <span className="text-3xl font-semibold tracking-tight tabular-nums text-zinc-900 dark:text-zinc-50">
               {value}
             </span>
             {unit && (
@@ -95,18 +88,17 @@ export function KpiCard({
         </div>
 
         {(change || description) && (
-          <div className="mt-3 flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 pt-2 border-t border-zinc-100 dark:border-zinc-800/60">
+          <div className="mt-1.5 flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
             {change && (
               <span
                 className={cn("inline-flex items-center gap-1 font-medium", {
                   "text-emerald-600 dark:text-emerald-400": trend === "up",
                   "text-red-600 dark:text-red-400": trend === "down",
-                  "text-zinc-600 dark:text-zinc-400": trend === "neutral",
+                  "text-zinc-500 dark:text-zinc-400 font-normal": trend === "neutral",
                 })}
               >
                 {trend === "up" && <TrendingUp className="h-3.5 w-3.5" />}
                 {trend === "down" && <TrendingDown className="h-3.5 w-3.5" />}
-                {trend === "neutral" && <Minus className="h-3.5 w-3.5" />}
                 {change}
               </span>
             )}

@@ -194,28 +194,24 @@ export function DashboardLiveVideoCard() {
 
   return (
     <>
-      <Card className="overflow-hidden border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-md">
+      <Card className="overflow-hidden">
         {/* Card Header & Channel Selector */}
-        <CardHeader className="p-4 sm:p-5 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-200 dark:border-zinc-800/80">
-          <div className="space-y-1">
+        <CardHeader className="p-4 sm:p-5 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 space-y-0 border-b border-zinc-200 dark:border-zinc-800">
+          <div className="min-w-0 flex-1 space-y-1">
             <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500 text-zinc-950 font-bold">
-                <Video className="h-4 w-4" />
-              </div>
-              <CardTitle className="text-sm font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                Site Camera Viewer
-                <Badge variant="outline" className="font-mono text-[10px] px-1.5 py-0">
-                  {selectedChannel.sourceType === "webcam" ? "WEBCAM" : "VIDEO FILE"}
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                Camera viewer
+                <Badge variant="outline" className="text-[11px] px-1.5 py-0 font-normal">
+                  {selectedChannel.sourceType === "webcam" ? "Webcam" : "Video file"}
                 </Badge>
               </CardTitle>
             </div>
             <CardDescription className="text-xs text-zinc-500 dark:text-zinc-400">
-              Plays the configured camera sources (local video files or your webcam). Video is not analysed in the
-              browser; computer-vision results are on the Safety page.
+              Playback of configured camera sources. PPE detection results are on the Safety page.
             </CardDescription>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             {/* Camera Preset Dropdown */}
             <select
               value={selectedChannel.id}
@@ -223,7 +219,7 @@ export function DashboardLiveVideoCard() {
                 const found = PRESET_CHANNELS.find((c) => c.id === e.target.value);
                 if (found) setSelectedChannel(found);
               }}
-              className="h-8 rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 px-2.5 text-xs font-mono font-medium text-zinc-800 dark:text-zinc-200 outline-none focus:ring-1 focus:ring-amber-500"
+              className="h-8 min-w-0 max-w-[220px] rounded-lg bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 px-2.5 text-xs text-zinc-800 dark:text-zinc-200 outline-none focus:ring-1 focus:ring-amber-500"
             >
               {PRESET_CHANNELS.map((ch) => (
                 <option key={ch.id} value={ch.id}>
@@ -237,7 +233,7 @@ export function DashboardLiveVideoCard() {
               variant="outline"
               size="sm"
               onClick={() => setIsConnectModalOpen(true)}
-              className="h-8 text-xs gap-1.5 font-bold border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-850 hover:border-amber-500"
+              className="h-8 shrink-0 text-xs gap-1.5"
             >
               <PlugZap className="h-3.5 w-3.5 text-amber-500" />
               <span className="hidden sm:inline">Connect Source</span>
@@ -249,7 +245,7 @@ export function DashboardLiveVideoCard() {
         <CardContent className="p-0">
           <div
             ref={containerRef}
-            className="relative aspect-video w-full bg-zinc-950 overflow-hidden flex items-center justify-center select-none group"
+            className="relative aspect-video lg:aspect-[21/9] w-full bg-zinc-950 overflow-hidden flex items-center justify-center select-none group"
           >
             {/* HTML5 Real Video Feed */}
             <video
@@ -262,8 +258,6 @@ export function DashboardLiveVideoCard() {
               className="w-full h-full object-cover"
             />
 
-            {/* Scanline CRT overlay for industrial control room aesthetic */}
-            <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.22)_50%)] bg-[size:100%_4px] pointer-events-none opacity-60" />
 
 
             {/* Top-Left: Live Stream & Rec Indicator */}

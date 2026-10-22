@@ -24,7 +24,7 @@ interface ProjectState {
   setCurrentSite: (site: SiteItem | null) => void;
 }
 
-function getCookie(name: string): string | null {
+export function getCookie(name: string): string | null {
   if (typeof document === "undefined") return null;
   const match = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
   return match ? decodeURIComponent(match[2]) : null;
@@ -35,11 +35,11 @@ function setCookie(name: string, val: string) {
   document.cookie = `${name}=${encodeURIComponent(val)}; path=/; max-age=31536000; SameSite=Lax`;
 }
 
-// Restore the last selection; ProjectSelectionSync replaces it with the first real
-// project/site when it is empty or no longer exists in this database.
+// Starts empty so server and client render identically; ProjectSelectionSync restores
+// the saved selection after mount and falls back to the first real project/site.
 export const useProjectStore = create<ProjectState>((set) => ({
-  activeProjectId: getCookie("bt_selected_project_id") ?? "",
-  activeSiteId: getCookie("bt_selected_site_id") ?? "",
+  activeProjectId: "",
+  activeSiteId: "",
   currentProject: null,
   currentSite: null,
 

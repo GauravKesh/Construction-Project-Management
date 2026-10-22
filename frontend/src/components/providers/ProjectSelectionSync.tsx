@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api/client";
 import { normalizeList } from "@/lib/utils";
-import { useProjectStore } from "@/stores/projectStore";
+import { getCookie, useProjectStore } from "@/stores/projectStore";
 
 /**
  * Keeps the active project/site pointing at records that exist in the connected
@@ -12,6 +12,14 @@ import { useProjectStore } from "@/stores/projectStore";
  */
 export function ProjectSelectionSync() {
   const { activeProjectId, activeSiteId, setActiveProject, setActiveSite } = useProjectStore();
+
+  // Restore the last selection once, on the client
+  useEffect(() => {
+    const savedProject = getCookie("bt_selected_project_id");
+    const savedSite = getCookie("bt_selected_site_id");
+    if (savedProject) useProjectStore.setState({ activeProjectId: savedProject });
+    if (savedSite) useProjectStore.setState({ activeSiteId: savedSite });
+  }, []);
 
   const { data: projectsData, isSuccess: projectsLoaded } = useQuery<any>({
     queryKey: ["projects"],

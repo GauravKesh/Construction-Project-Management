@@ -72,6 +72,7 @@ export default function LiveMonitoringPage() {
   const { data: sensorsData } = useQuery<any>({
     queryKey: ["sensors", activeSiteId],
     queryFn: () => apiClient.get<any>(`/api/v1/sites/${activeSiteId}/sensors`),
+    enabled: Boolean(activeSiteId),
     staleTime: 15000,
   });
 
@@ -79,6 +80,7 @@ export default function LiveMonitoringPage() {
   const { data: camerasData } = useQuery<any>({
     queryKey: ["cameras", activeSiteId],
     queryFn: () => apiClient.get<any>(`/api/v1/sites/${activeSiteId}/cameras`),
+    enabled: Boolean(activeSiteId),
     staleTime: 15000,
   });
 

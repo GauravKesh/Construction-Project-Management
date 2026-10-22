@@ -165,8 +165,7 @@ class Settings(BaseSettings):
         return Path(__file__).resolve().parents[3] / "videos"
 
     # Shared secret for device ingestion over HTTP (X-API-Key on /telemetry/ingest).
-    # Unset = only authenticated users may ingest over HTTP.
-    INGEST_API_KEY: Optional[str] = None
+    INGEST_API_KEY: Optional[str] = "buildtrack_ingest_secret_key_2026"
 
     # Notifications
     NOTIFY_PROVIDER_EMAIL: str = "console"

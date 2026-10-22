@@ -1,0 +1,4 @@
+# Same versions as backend/requirements*.txt, so the backend virtualenv can be reused
+opencv-python-headless==5.0.0.93
+numpy>=2.0
+paho-mqtt==2.1.0

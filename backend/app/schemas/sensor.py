@@ -4,6 +4,32 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 
+class SensorSourceTestRequest(BaseModel):
+    url: str = Field(min_length=1, max_length=2048)
+    sensor_type: Optional[str] = None
+
+
+class SensorSourceTestResponse(BaseModel):
+    ok: bool
+    format: Optional[str] = None  # "sse" or "json"
+    value: Optional[float] = None
+    unit: Optional[str] = None
+    ts: Optional[str] = None
+    reported_type: Optional[str] = None
+    warnings: List[str] = []
+    error: Optional[str] = None
+    elapsed_ms: Optional[int] = None
+
+
+class SensorSourceStatus(BaseModel):
+    sensor_id: uuid.UUID
+    source_url: Optional[str] = None
+    state: str  # not_configured, connecting, connected, error
+    last_reading_at: Optional[str] = None
+    readings_received: int = 0
+    last_error: Optional[str] = None
+
+
 class SensorConnectionInfo(BaseModel):
     sensor_id: uuid.UUID
     sensor_code: str
@@ -29,6 +55,7 @@ class SensorCreate(BaseModel):
     location_geojson: Optional[Dict[str, Any]] = None
     min_threshold: Optional[float] = None
     max_threshold: Optional[float] = None
+    source_url: Optional[str] = None  # device endpoint the backend pulls from
 
 
 class SensorUpdate(BaseModel):
@@ -37,6 +64,7 @@ class SensorUpdate(BaseModel):
     location_geojson: Optional[Dict[str, Any]] = None
     min_threshold: Optional[float] = None
     max_threshold: Optional[float] = None
+    source_url: Optional[str] = None  # device endpoint the backend pulls from
     status: Optional[str] = None
 
 
@@ -51,6 +79,7 @@ class SensorResponse(BaseModel):
     location_geojson: Optional[Dict[str, Any]] = None
     min_threshold: Optional[float] = None
     max_threshold: Optional[float] = None
+    source_url: Optional[str] = None  # device endpoint the backend pulls from
     status: str
     battery_level: Optional[float] = None
     last_seen_at: Optional[datetime] = None

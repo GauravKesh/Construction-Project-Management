@@ -108,6 +108,9 @@ Backend tests are **hermetic**: they create and drop `<POSTGRES_DB>_test`, use M
 | Forecast | OLS linear trend on hourly rollups with a 95% Student-t prediction interval. | A baseline, not "machine learning". Compare against naive/seasonal baselines with backtesting before drawing conclusions. |
 | Video feeds | Seeded cameras point to local stock video files in `videos/`. | Check the licence of any footage you redistribute; real site footage of workers is personal data (consent, retention, anonymisation, ethics approval). |
 
+### Device simulator (sensors + camera feeds)
+`device-simulator/` is a standalone Python server that streams realistic readings for every sensor type over MQTT and serves each video in `videos/` as an MJPEG camera. `python -m simulator register` adds its devices to a site, and `python -m simulator run` streams them. See [device-simulator/README.md](device-simulator/README.md).
+
 ### Reproducible runs with ground truth
 ```bash
 # Sensor stream: seeded, 100 cycles, one CSV row per reading with injected_spike = 0/1

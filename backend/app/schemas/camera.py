@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 
@@ -12,6 +12,7 @@ class CameraCreate(BaseModel):
     location_geojson: Optional[Dict[str, Any]] = None
     fps: int = Field(default=2, ge=1, le=30)
     is_cv_enabled: bool = True
+    audio_url: Optional[str] = None  # sound-level / acoustic-event analysis
 
 
 class CameraUpdate(BaseModel):
@@ -20,6 +21,7 @@ class CameraUpdate(BaseModel):
     zone_id: Optional[uuid.UUID] = None
     location_geojson: Optional[Dict[str, Any]] = None
     fps: Optional[int] = None
+    audio_url: Optional[str] = None
     status: Optional[str] = None
     is_cv_enabled: Optional[bool] = None
 
@@ -35,6 +37,7 @@ class CameraResponse(BaseModel):
     fps: int
     status: str
     is_cv_enabled: bool
+    audio_url: Optional[str] = None
     last_frame_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
@@ -52,6 +55,37 @@ class CameraStatusResponse(BaseModel):
     last_frame_at: Optional[datetime] = None
     stream_active: bool
     last_error: Optional[str] = None
+
+
+class CameraRecording(BaseModel):
+    name: str
+    started_at: datetime
+    ended_at: datetime
+    size_bytes: int
+
+
+class CameraAudioTestResponse(BaseModel):
+    ok: bool
+    level_db: Optional[float] = None
+    peak_db: Optional[float] = None
+    sample_rate: Optional[int] = None
+    error: Optional[str] = None
+
+
+class CameraAnalyticsSample(BaseModel):
+    ts: datetime
+    motion_ratio: Optional[float] = None
+    brightness: Optional[float] = None
+    sharpness: Optional[float] = None
+    persons: Optional[int] = None
+    security_hours: Optional[bool] = None
+    tamper: Optional[bool] = None
+
+
+class CameraAnalyticsResponse(BaseModel):
+    camera_id: uuid.UUID
+    samples: List[CameraAnalyticsSample]
+    latest_audio: Optional[Dict[str, Any]] = None
 
 
 class CameraConnectionTestRequest(BaseModel):

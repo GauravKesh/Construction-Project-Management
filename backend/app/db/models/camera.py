@@ -17,6 +17,8 @@ class Camera(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     fps = Column(Integer, default=2, nullable=False)
     status = Column(String(32), default="inactive", nullable=False)  # active, inactive, streaming, error
     is_cv_enabled = Column(Boolean, default=True, nullable=False)
+    # Optional audio stream (WAV over HTTP, or anything ffmpeg can read) for sound analysis
+    audio_url = Column(String(2048), nullable=True)
     last_frame_at = Column(DateTime(timezone=True), nullable=True)
 
     site = relationship("Site", back_populates="cameras")

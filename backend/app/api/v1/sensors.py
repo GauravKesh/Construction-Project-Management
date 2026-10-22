@@ -21,8 +21,12 @@ from app.db.repositories.telemetry_repo import TelemetryRepository
 from app.gateway.auth import get_current_user, get_current_user_payload, security_scheme
 from app.gateway.rbac import check_site_access, require_roles
 from app.schemas.common import PaginatedResponse, StatusMessage
+from app.ingestion.sensor_sources import get_source_status, probe_source, validate_source_url
 from app.schemas.sensor import (
     SensorConnectionInfo,
+    SensorSourceStatus,
+    SensorSourceTestRequest,
+    SensorSourceTestResponse,
     ReadingRangeItem,
     SensorCreate,
     SensorHealthResponse,
@@ -60,6 +64,52 @@ async def list_sensors_for_site(
     return PaginatedResponse(items=sensors, total=total, page=page, page_size=page_size, pages=pages)
 
 
+SENSOR_OPERATORS = [UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.SITE_ENGINEER]
+
+
+def _check_source_url(url: Optional[str]) -> None:
+    if url:
+        error = validate_source_url(url)
+        if error:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=error)
+
+
+@router.post("/sensors/test-source", response_model=SensorSourceTestResponse)
+async def test_sensor_source(
+    req: SensorSourceTestRequest,
+    current_user: User = Depends(require_roles(SENSOR_OPERATORS)),
+):
+    """
+    Connect to a device endpoint and parse its first reading, so it can be checked
+    before the sensor is saved. Restricted to operator roles because the server
+    connects to the given address.
+    """
+    return SensorSourceTestResponse(**await probe_source(req.url, req.sensor_type))
+
+
+@router.get("/sensors/{sensor_id}/source-status", response_model=SensorSourceStatus)
+async def get_sensor_source_status(
+    sensor_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    sensor_repo: SensorRepository = Depends(get_sensor_repo),
+):
+    sensor = await sensor_repo.get_by_id_active(sensor_id)
+    if not sensor:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sensor not found")
+    await check_site_access(sensor.site_id, current_user)
+    if not sensor.source_url:
+        return SensorSourceStatus(sensor_id=sensor.id, state="not_configured")
+    st = await get_source_status(str(sensor.id))
+    return SensorSourceStatus(
+        sensor_id=sensor.id,
+        source_url=sensor.source_url,
+        state=st.get("state") or "connecting",
+        last_reading_at=st.get("last_reading_at") or None,
+        readings_received=int(st.get("readings_received") or 0),
+        last_error=st.get("last_error") or None,
+    )
+
+
 @router.post("/sites/{site_id}/sensors", response_model=SensorResponse, status_code=status.HTTP_201_CREATED)
 async def create_sensor(
     site_id: uuid.UUID,
@@ -69,6 +119,7 @@ async def create_sensor(
     audit_repo: AuditRepository = Depends(get_audit_repo),
 ):
     await check_site_access(site_id, current_user)
+    _check_source_url(req.source_url)
     existing = await sensor_repo.get_by_code(req.sensor_code)
     if existing:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Sensor code already exists")
@@ -109,6 +160,7 @@ async def update_sensor(
     if not sensor:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sensor not found")
     await check_site_access(sensor.site_id, current_user)
+    _check_source_url(req.source_url)
 
     updated = await sensor_repo.update(sensor_id, **req.model_dump(exclude_unset=True))
     await audit_repo.record(

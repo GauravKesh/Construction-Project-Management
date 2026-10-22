@@ -90,4 +90,8 @@ async def init_mongo() -> None:
         [("site_id", pymongo.ASCENDING), ("snapshot_type", pymongo.ASCENDING), ("ts", pymongo.DESCENDING)]
     )
 
+    # 8. camera_analytics: per-frame security metrics (30 days TTL)
+    await db.camera_analytics.create_index([("camera_id", pymongo.ASCENDING), ("ts", pymongo.DESCENDING)])
+    await db.camera_analytics.create_index([("ts", pymongo.ASCENDING)], expireAfterSeconds=30 * 86400)
+
     logger.info("MongoDB collections and indexes initialized successfully.")

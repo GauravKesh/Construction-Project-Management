@@ -112,14 +112,14 @@ async def test_stream_manager_sync_reconciles_registry(monkeypatch):
     manager = StreamManager()
     started, stopped = [], []
 
-    async def fake_start(camera_id, site_id, stream_url, fps=2):
+    async def fake_start(camera_id, site_id, stream_url, fps=2, zone_id=None):
         started.append(camera_id)
 
         class W:
             pass
 
         w = W()
-        w.stream_url, w.fps = stream_url, fps
+        w.stream_url, w.fps, w.zone_id = stream_url, fps, zone_id
         manager._workers[camera_id] = w
         return True
 

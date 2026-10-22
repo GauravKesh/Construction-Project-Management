@@ -1,0 +1,80 @@
+{
+  "server": {
+    "host": "127.0.0.1",
+    "port": 8090,
+    "advertise_host": "localhost"
+  },
+  "mqtt": {
+    "enabled": true,
+    "host": "localhost",
+    "port": 1883,
+    "username": null,
+    "password": null
+  },
+  "buildtrack": {
+    "api": "http://localhost:8000",
+    "site_id": null
+  },
+  "seed": 2026,
+  "labels_csv": null,
+  "video_library": {
+    "dir": "../videos",
+    "extensions": [
+      ".mp4",
+      ".mov",
+      ".m4v",
+      ".mkv",
+      ".avi",
+      ".webm"
+    ],
+    "rescan_seconds": 15,
+    "fps": 10,
+    "width": 960,
+    "registered": {}
+  },
+  "sensors": [
+    {
+      "name": "temp-deck-3",
+      "type": "temperature",
+      "interval_seconds": 5
+    },
+    {
+      "name": "humidity-deck-3",
+      "type": "humidity",
+      "interval_seconds": 5
+    },
+    {
+      "name": "gas-basement",
+      "type": "gas",
+      "interval_seconds": 2
+    },
+    {
+      "name": "noise-perimeter",
+      "type": "noise",
+      "interval_seconds": 2
+    },
+    {
+      "name": "vibration-piling",
+      "type": "vibration",
+      "interval_seconds": 1
+    },
+    {
+      "name": "dust-excavation",
+      "type": "dust",
+      "interval_seconds": 5
+    },
+    {
+      "name": "tilt-crane",
+      "type": "tilt",
+      "interval_seconds": 10
+    }
+  ],
+  "cameras": [
+    {
+      "name": "synthetic-yard",
+      "source": "synthetic",
+      "fps": 10,
+      "width": 960
+    }
+  ]
+}

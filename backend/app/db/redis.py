@@ -77,6 +77,11 @@ def key_camera_frame(camera_id: str) -> str:
     return f"camera:frame:{camera_id}"
 
 
+def key_camera_frame_seq(camera_id: str) -> str:
+    """Incremented on every published frame, so streamers can tell new frames apart."""
+    return f"camera:frame_seq:{camera_id}"
+
+
 def key_camera_error(camera_id: str) -> str:
     """Last connection error reported by a camera worker."""
     return f"camera:error:{camera_id}"

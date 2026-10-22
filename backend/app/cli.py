@@ -112,6 +112,9 @@ async def run_video_handler():
 
     from sqlalchemy import select
     from app.db.models.camera import Camera
+    from app.db.models.sensor import Sensor
+    from app.ingestion.audio_analyzer import AudioSpec, audio_manager, validate_audio_url
+    from app.ingestion.sensor_sources import SensorSourceSpec, sensor_source_manager, validate_source_url
     from app.ingestion.video_stream_handler import CameraSpec, stream_manager
 
     shutdown_event = asyncio.Event()
@@ -133,27 +136,106 @@ async def run_video_handler():
                     stream_url=cam.stream_url,
                     # Camera.fps can hold the source's native rate; never infer faster than the global cap
                     fps=min(cam.fps or settings.CV_INFERENCE_FPS, settings.CV_INFERENCE_FPS),
+                    zone_id=str(cam.zone_id) if cam.zone_id else None,
                 )
                 for cam in result.scalars().all()
             ]
 
+    async def load_audio_specs():
+        """Cameras with an audio stream; each gets an auto-created `noise` sensor for its readings."""
+        if not settings.AUDIO_ANALYSIS_ENABLED:
+            return []
+        specs = []
+        async with AsyncSessionLocal() as session:
+            cameras = (
+                await session.execute(
+                    select(Camera).where(
+                        Camera.audio_url.is_not(None),
+                        Camera.status.in_(["active", "streaming"]),
+                        Camera.deleted_at.is_(None),
+                    )
+                )
+            ).scalars().all()
+            for cam in cameras:
+                if validate_audio_url(cam.audio_url):
+                    continue
+                code = f"AUDIO-{cam.camera_code}"[:64]
+                sensor = (await session.execute(select(Sensor).where(Sensor.sensor_code == code))).scalar_one_or_none()
+                if sensor is None:
+                    sensor = Sensor(
+                        site_id=cam.site_id,
+                        zone_id=cam.zone_id,
+                        sensor_code=code,
+                        name=f"Audio level ({cam.name})",
+                        sensor_type="noise",
+                        unit="dB",
+                        location_geojson=cam.location_geojson,
+                        status="active",
+                    )
+                    session.add(sensor)
+                    await session.flush()
+                    logger.info(f"Created audio sensor {code} for camera {cam.camera_code}")
+                elif sensor.deleted_at is not None:
+                    sensor.deleted_at = None
+                specs.append(AudioSpec(
+                    camera_id=str(cam.id),
+                    site_id=str(cam.site_id),
+                    zone_id=str(cam.zone_id) if cam.zone_id else None,
+                    audio_url=cam.audio_url,
+                    sensor_id=str(sensor.id),
+                ))
+            await session.commit()
+        return specs
+
+    async def load_sensor_specs():
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(
+                select(Sensor).where(
+                    Sensor.source_url.is_not(None),
+                    Sensor.status == "active",
+                    Sensor.deleted_at.is_(None),
+                )
+            )
+            return [
+                SensorSourceSpec(
+                    sensor_id=str(s.id),
+                    site_id=str(s.site_id),
+                    sensor_type=s.sensor_type.lower(),
+                    unit=s.unit,
+                    zone_id=str(s.zone_id) if s.zone_id else None,
+                    source_url=s.source_url,
+                )
+                for s in result.scalars().all()
+                if not validate_source_url(s.source_url)
+            ]
+
     async def sync_loop():
-        # Re-read the camera registry so cameras added, edited, started or stopped
-        # through the API are picked up without restarting this process.
+        # Re-read the device registry so cameras and pull-based sensors added, edited,
+        # started or stopped through the API are picked up without a restart.
         while not shutdown_event.is_set():
             try:
                 await stream_manager.sync(await load_camera_specs())
             except Exception as e:
                 logger.error(f"Camera registry sync failed: {e}", exc_info=True)
             try:
+                await sensor_source_manager.sync(await load_sensor_specs())
+            except Exception as e:
+                logger.error(f"Sensor source sync failed: {e}", exc_info=True)
+            try:
+                await audio_manager.sync(await load_audio_specs())
+            except Exception as e:
+                logger.error(f"Audio analysis sync failed: {e}", exc_info=True)
+            try:
                 await asyncio.wait_for(shutdown_event.wait(), timeout=settings.CAMERA_SYNC_SECONDS)
             except asyncio.TimeoutError:
                 pass
 
-    logger.info(f"Video stream handler running (camera registry sync every {settings.CAMERA_SYNC_SECONDS}s).")
+    logger.info(f"Device connector running: cameras + pull-based sensors (registry sync every {settings.CAMERA_SYNC_SECONDS}s).")
     await sync_loop()
 
-    logger.info("Stopping all camera stream workers...")
+    logger.info("Stopping all device workers...")
+    await sensor_source_manager.stop_all()
+    await audio_manager.stop_all()
     for cam_id in list(stream_manager._workers.keys()):
         await stream_manager.stop_camera(cam_id)
 
@@ -218,7 +300,7 @@ def main():
     )
     parser.add_argument(
         "role",
-        choices=["api", "worker", "mqtt-consumer", "video-handler", "migrate", "seed"],
+        choices=["api", "worker", "mqtt-consumer", "video-handler", "device-connector", "migrate", "seed"],
         help="Process role to start",
     )
 
@@ -229,6 +311,8 @@ def main():
         "worker": run_worker,
         "mqtt-consumer": run_mqtt_consumer,
         "video-handler": run_video_handler,
+        # Same process: pulls camera feeds and sensor endpoints
+        "device-connector": run_video_handler,
         "migrate": run_migrate,
         "seed": run_seed,
     }

@@ -2,7 +2,7 @@ import math
 import uuid
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from app.core.dependencies import (
     get_audit_repo,
     get_camera_repo,
@@ -15,13 +15,24 @@ from app.db.repositories.camera_repo import CameraRepository
 from app.gateway.auth import get_current_user
 from app.gateway.rbac import check_site_access, require_roles
 import asyncio
+from datetime import datetime, timedelta, timezone
+from sqlalchemy import select
+from app.db.models.sensor import Sensor
+from app.db.mongo import get_mongo_db
+from app.ingestion.audio_analyzer import get_audio_status, probe_audio, validate_audio_url
 from app.ingestion.video_stream_handler import (
     generate_mjpeg_stream,
     get_last_error,
     get_latest_frame,
+    list_recordings,
     probe_stream,
+    recording_path,
 )
 from app.schemas.camera import (
+    CameraAnalyticsResponse,
+    CameraAnalyticsSample,
+    CameraAudioTestResponse,
+    CameraRecording,
     CameraConnectionTestRequest,
     CameraConnectionTestResponse,
     CameraCreate,
@@ -61,6 +72,7 @@ async def create_camera(
     audit_repo: AuditRepository = Depends(get_audit_repo),
 ):
     await check_site_access(site_id, current_user)
+    _check_audio_url(req.audio_url)
     existing = await camera_repo.get_by_code(req.camera_code)
     if existing:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Camera code already exists")
@@ -101,6 +113,7 @@ async def update_camera(
     if not camera:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Camera not found")
     await check_site_access(camera.site_id, current_user)
+    _check_audio_url(req.audio_url)
 
     updated = await camera_repo.update(camera_id, **req.model_dump(exclude_unset=True))
     await audit_repo.record(
@@ -127,6 +140,12 @@ async def delete_camera(
 
     # Soft-deleted cameras drop out of the video handler's next registry sync
     await camera_repo.delete(camera_id, soft=True)
+    # Retire the camera's auto-created audio sensor along with it
+    audio_sensor = (
+        await camera_repo.session.execute(select(Sensor).where(Sensor.sensor_code == f"AUDIO-{camera.camera_code}"[:64]))
+    ).scalar_one_or_none()
+    if audio_sensor and audio_sensor.deleted_at is None:
+        audio_sensor.deleted_at = datetime.now(timezone.utc)
     await audit_repo.record(
         action="DELETE_CAMERA",
         entity_type="camera",
@@ -137,6 +156,46 @@ async def delete_camera(
 
 
 CAMERA_OPERATORS = [UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.SAFETY_OFFICER, UserRole.SITE_ENGINEER]
+
+
+def _check_audio_url(url: Optional[str]) -> None:
+    if url:
+        error = validate_audio_url(url)
+        if error:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=error)
+
+
+@router.post("/cameras/test-audio", response_model=CameraAudioTestResponse)
+async def test_camera_audio(
+    req: CameraConnectionTestRequest,
+    current_user: User = Depends(require_roles(CAMERA_OPERATORS)),
+):
+    """Read ~1.5 s from an audio stream and report its level, before the camera is saved."""
+    return CameraAudioTestResponse(**await probe_audio(req.stream_url))
+
+
+@router.get("/cameras/{camera_id}/analytics", response_model=CameraAnalyticsResponse)
+async def get_camera_analytics(
+    camera_id: uuid.UUID,
+    minutes: int = Query(10, ge=1, le=1440),
+    current_user: User = Depends(get_current_user),
+    camera_repo: CameraRepository = Depends(get_camera_repo),
+):
+    """Recent security analytics (motion, brightness, sharpness, tamper) and live audio level."""
+    camera = await camera_repo.get_by_id(camera_id)
+    if not camera:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Camera not found")
+    await check_site_access(camera.site_id, current_user)
+    since = datetime.now(timezone.utc) - timedelta(minutes=minutes)
+    docs = await get_mongo_db().camera_analytics.find(
+        {"camera_id": str(camera_id), "ts": {"$gte": since}}, {"_id": 0}
+    ).sort("ts", -1).limit(600).to_list(length=600)
+    audio = await get_audio_status(str(camera_id)) if camera.audio_url else None
+    return CameraAnalyticsResponse(
+        camera_id=camera.id,
+        samples=[CameraAnalyticsSample(**d) for d in reversed(docs)],
+        latest_audio=audio or None,
+    )
 
 
 @router.post("/cameras/test-connection", response_model=CameraConnectionTestResponse)
@@ -251,3 +310,34 @@ async def get_camera_mjpeg_stream(
         generate_mjpeg_stream(str(camera_id)),
         media_type="multipart/x-mixed-replace; boundary=frame",
     )
+
+
+@router.get("/cameras/{camera_id}/recordings", response_model=List[CameraRecording])
+async def list_camera_recordings(
+    camera_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    camera_repo: CameraRepository = Depends(get_camera_repo),
+):
+    """Locally stored recording segments for this camera, newest first."""
+    camera = await camera_repo.get_by_id(camera_id)
+    if not camera:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Camera not found")
+    await check_site_access(camera.site_id, current_user)
+    return [CameraRecording(**r) for r in list_recordings(str(camera_id))]
+
+
+@router.get("/cameras/{camera_id}/recordings/{name}")
+async def download_camera_recording(
+    camera_id: uuid.UUID,
+    name: str,
+    current_user: User = Depends(get_current_user),
+    camera_repo: CameraRepository = Depends(get_camera_repo),
+):
+    camera = await camera_repo.get_by_id(camera_id)
+    if not camera:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Camera not found")
+    await check_site_access(camera.site_id, current_user)
+    path = recording_path(str(camera_id), name)
+    if not path:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recording not found")
+    return FileResponse(path, media_type="video/mp4", filename=f"{camera.camera_code}-{name}")

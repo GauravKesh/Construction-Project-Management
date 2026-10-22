@@ -120,6 +120,41 @@ class Settings(BaseSettings):
     # detection is still recorded; this only stops one ongoing violation raising an
     # alert per frame.
     PPE_ALERT_COOLDOWN_SECONDS: int = 300
+    # Camera frames are pulled and served at this rate for live viewing; PPE detection
+    # runs on a subset of them at the camera's own analysis rate (Camera.fps).
+    CAMERA_VIEW_FPS: int = 10
+    CAMERA_VIEW_MAX_WIDTH: int = 1280
+    # Local recording of every connected camera: rolling MP4 segments under
+    # <STORAGE_LOCAL_PATH>/recordings/<camera_id>/, deleted after the retention period.
+    CAMERA_RECORDING_ENABLED: bool = True
+    CAMERA_RECORDING_FPS: int = 5
+    CAMERA_RECORDING_SEGMENT_SECONDS: int = 300
+    CAMERA_RECORDING_RETENTION_HOURS: int = 24
+    # Pull-based sensors: poll interval for plain JSON endpoints (SSE streams push)
+    SENSOR_SOURCE_POLL_SECONDS: float = 2.0
+    # Real-time statistical anomaly detection per sensor (rolling z-score)
+    ANOMALY_DETECTION_ENABLED: bool = True
+    ANOMALY_WINDOW: int = 60
+    ANOMALY_MIN_SAMPLES: int = 20
+    ANOMALY_Z_THRESHOLD: float = 4.0
+    ANOMALY_COOLDOWN_SECONDS: int = 300
+    # Cross-event correlation (e.g. gas threshold + PPE violation in one zone)
+    CORRELATION_WINDOW_SECONDS: int = 300
+    CORRELATION_COOLDOWN_SECONDS: int = 900
+    # Camera audio analysis. Levels are dBFS + AUDIO_DB_OFFSET: an uncalibrated estimate
+    # of sound pressure level (calibrate per microphone for real measurements).
+    AUDIO_ANALYSIS_ENABLED: bool = True
+    AUDIO_SAMPLE_RATE: int = 16000
+    AUDIO_DB_OFFSET: float = 100.0
+    AUDIO_IMPULSE_DB: float = 20.0          # peak this far above the rolling level = impulse event
+    AUDIO_EVENT_COOLDOWN_SECONDS: int = 60
+    # Video security analytics (no ML model needed): motion during secured hours and tampering
+    SECURITY_ANALYSIS_ENABLED: bool = True
+    SECURITY_HOURS: str = "19:00-07:00"     # local time window when motion means intrusion; "" disables
+    SECURITY_TIMEZONE: str = "UTC"
+    SECURITY_MOTION_THRESHOLD: float = 0.02  # fraction of the frame that changed
+    SECURITY_CONSECUTIVE_SAMPLES: int = 3
+    SECURITY_ALERT_COOLDOWN_SECONDS: int = 600
     # How often the video handler re-reads the camera registry to start/stop workers
     CAMERA_SYNC_SECONDS: int = 10
 

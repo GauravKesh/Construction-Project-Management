@@ -20,6 +20,8 @@ class Sensor(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     status = Column(String(32), default="active", nullable=False)  # active, inactive, maintenance, offline
     battery_level = Column(Float, nullable=True)
     last_seen_at = Column(DateTime(timezone=True), nullable=True)
+    # Device endpoint the backend pulls readings from (SSE stream or JSON); NULL = device pushes (MQTT/HTTP)
+    source_url = Column(String(2048), nullable=True)
 
     site = relationship("Site", back_populates="sensors")
     zone = relationship("Zone", back_populates="sensors")

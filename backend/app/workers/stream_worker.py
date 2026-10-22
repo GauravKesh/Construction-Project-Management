@@ -23,6 +23,9 @@ from app.db.repositories.incident_repo import IncidentRepository
 from app.db.repositories.outbox_repo import OutboxRepository
 from app.db.repositories.telemetry_repo import TelemetryRepository
 from app.db.repositories.user_repo import UserRepository
+from app.core.config import settings
+from app.processing.anomaly import score_reading
+from app.processing.event_processor import event_correlation_service
 from app.processing.rule_engine import rule_engine
 from app.processing.telemetry import TelemetryProcessingService
 from app.db.models.project import Site
@@ -182,6 +185,11 @@ class StreamIngestWorker:
                 # 3. Rule Engine evaluation
                 triggered = await rule_engine.evaluate_reading(normalized, session)
 
+                # 3b. Real-time statistical analysis: rolling z-score against this sensor's history
+                analysis = None
+                if settings.ANOMALY_DETECTION_ENABLED:
+                    analysis = await score_reading(normalized["sensor_id"], normalized["value"], normalized["ts"])
+
                 # 4. Atomic Transaction for Alerts + Incidents + Outbox events
                 outbox_repo = OutboxRepository(session)
                 alert_repo = AlertRepository(session)
@@ -201,6 +209,7 @@ class StreamIngestWorker:
                         "unit": normalized["unit"],
                         "ts": normalized["ts"].isoformat(),
                         "battery": normalized.get("battery"),
+                        "analysis": analysis.as_dict() if analysis else None,
                     },
                 )
 
@@ -300,16 +309,96 @@ class StreamIngestWorker:
                             },
                         )
 
+                anomaly_alert = None
+                if analysis and analysis.should_alert:
+                    anomaly_alert = await self._create_anomaly_alert(normalized, analysis, outbox_repo, session)
+
                 # Commit transaction
                 await session.commit()
 
                 # Acknowledge message in Redis stream
                 await r.xack(KEY_STREAM_INGEST, self.group_name, msg_id)
 
+                # 5. Cross-event correlation (after commit: never fails the reading itself)
+                await self._correlate(normalized, triggered, anomaly_alert)
+
             except Exception as e:
                 await session.rollback()
                 logger.error(f"Processing failed for message {msg_id}: {e}", exc_info=True)
                 await self._handle_failure(msg_id, fields, normalized, e)
+
+    async def _create_anomaly_alert(self, reading, analysis, outbox_repo, session):
+        try:
+            site_uuid = uuid.UUID(reading["site_id"])
+        except ValueError:
+            return None
+        try:
+            sensor_uuid = uuid.UUID(reading["sensor_id"])
+        except ValueError:
+            sensor_uuid = None
+        zone_uuid = uuid.UUID(reading["zone_id"]) if reading.get("zone_id") else None
+        details = {
+            **analysis.as_dict(),
+            "method": "rolling_zscore",
+            "window": settings.ANOMALY_WINDOW,
+            "z_threshold": settings.ANOMALY_Z_THRESHOLD,
+            "sensor_type": reading["type"],
+            "unit": reading.get("unit"),
+            "reading_ts": reading["ts"].isoformat(),
+        }
+        direction = "above" if (analysis.z_score or 0) > 0 else "below"
+        alert = Alert(
+            site_id=site_uuid,
+            zone_id=zone_uuid,
+            sensor_id=sensor_uuid,
+            alert_type="anomaly",
+            severity=AlertSeverity.WARNING,
+            status=AlertStatus.ACTIVE,
+            message=(
+                f"Unusual {reading['type']} reading on sensor {reading['sensor_id']}: {reading['value']} {reading.get('unit', '')} "
+                f"is {abs(analysis.z_score):.1f} standard deviations {direction} its recent average ({analysis.mean:.2f})"
+            ),
+            reading_value=reading["value"],
+            details=details,
+        )
+        session.add(alert)
+        await session.flush()
+        await outbox_repo.add_event(
+            event_type="alert:new",
+            aggregate_type="alert",
+            aggregate_id=str(alert.id),
+            payload={
+                "alert_id": str(alert.id),
+                "site_id": str(site_uuid),
+                "severity": "warning",
+                "message": alert.message,
+                "reading_value": reading["value"],
+                "ts": datetime.now(timezone.utc).isoformat(),
+            },
+        )
+        return alert
+
+    async def _correlate(self, reading, triggered, anomaly_alert) -> None:
+        events = [("sensor_threshold", item) for item in triggered]
+        if anomaly_alert is not None:
+            events.append(("anomaly", None))
+        for event_type, item in events:
+            try:
+                await event_correlation_service.process_and_log(
+                    event_type=event_type,
+                    site_id=reading["site_id"],
+                    payload={
+                        "sensor_id": reading["sensor_id"],
+                        "type": reading["type"],
+                        "zone_id": reading.get("zone_id"),
+                        "value": reading["value"],
+                        "ts": reading["ts"].isoformat(),
+                        "rule": item["rule"].name if item else None,
+                    },
+                    severity=(item["severity"].value if item else "warning"),
+                )
+            except Exception as e:
+                logger.warning(f"Correlation step failed for {reading['sensor_id']}: {e}")
 
     def stop(self) -> None:
         self._running = False

@@ -185,7 +185,7 @@ export default function IncidentDetailPage() {
                 className="w-full h-20 rounded-lg bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-3 text-xs text-zinc-900 dark:text-zinc-100 outline-none focus:ring-2 focus:ring-amber-500/50"
               />
               <div className="flex justify-end">
-                <Button type="submit" variant="amber" size="sm" className="gap-1.5 font-bold">
+                <Button type="submit" variant="amber" size="sm" className="gap-1.5 font-bold" disabled={posting}>
                   <Send className="h-3.5 w-3.5" />
                   Post Log Update
                 </Button>

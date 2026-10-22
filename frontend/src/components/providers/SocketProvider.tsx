@@ -78,9 +78,8 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
         socket.on("connect_error", (err) => {
           console.warn("Socket connection error:", err.message);
+          // Never substitute simulated data for a failed connection: the UI shows "disconnected"
           useLiveStore.getState().setConnectionStatus("disconnected");
-          // Fall back gracefully to simulator if backend socket is unreachable
-          mockSocketSimulator.start(activeSiteId || "site-default");
         });
 
         // Event listeners
@@ -137,8 +136,8 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         });
       })
       .catch((err) => {
-        console.warn("Socket authentication failed, activating mock simulator fallback:", err);
-        mockSocketSimulator.start(activeSiteId || "site-default");
+        console.warn("Socket authentication failed; live updates disabled:", err);
+        if (isMounted) useLiveStore.getState().setConnectionStatus("disconnected");
       });
 
     return () => {

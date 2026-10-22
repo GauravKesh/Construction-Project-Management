@@ -20,7 +20,6 @@ import {
   ParsedZone,
   ParsedSensorNode,
   ParsedCameraNode,
-  DEFAULT_SITE_MAP,
 } from "@/lib/mapUtils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -39,6 +38,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
+import { NO_DATA, fmtNumber } from "@/lib/format";
 
 // Fix standard Leaflet default icon URLs in case fallback is ever used
 if (typeof window !== "undefined") {
@@ -461,7 +461,7 @@ export default function SiteMapLeaflet({
                         <span className="font-mono text-[10px] text-zinc-400">{sensor.code}</span>
                       </div>
                       <div className="font-mono text-base font-black text-blue-600">
-                        {sensor.value} {sensor.unit}
+                        {fmtNumber(sensor.value, 2)} {sensor.unit}
                       </div>
                       <div className="flex items-center justify-between text-[10px] text-zinc-500 font-mono">
                         <span>Battery: {sensor.battery_level}%</span>
@@ -500,7 +500,7 @@ export default function SiteMapLeaflet({
                         <span className="font-mono text-[10px] text-amber-600 font-bold">{cam.code}</span>
                       </div>
                       <div className="text-[10px] font-mono text-zinc-500">
-                        {cam.resolution} • {cam.fps} FPS
+                        {cam.resolution ?? NO_DATA} • {fmtNumber(cam.fps, 0)} FPS
                       </div>
                       <span className="inline-block px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[9px] font-bold uppercase">
                         Stream Active (YOLOv8 CV)

@@ -41,6 +41,7 @@ import {
 import { CameraLiveFeedCard } from "@/components/map/CameraLiveFeedCard";
 import { SensorTelemetryCard } from "@/components/map/SensorTelemetryCard";
 import { toast } from "sonner";
+import { NO_DATA, fmtNumber } from "@/lib/format";
 
 // Dynamic import with ssr: false to prevent Leaflet window errors during Next.js SSR
 const SiteMapLeaflet = dynamic(() => import("@/components/map/SiteMapLeaflet"), {
@@ -492,7 +493,7 @@ export default function SiteMapPage() {
                   <div className="flex justify-between">
                     <span className="text-zinc-600 dark:text-zinc-400">Active Workforce:</span>
                     <span className="font-mono font-bold text-emerald-500">
-                      {selectedZone.active_workers || 12} Personnel on Site
+                      {fmtNumber(selectedZone.active_workers, 0)} Personnel on Site
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -544,7 +545,7 @@ export default function SiteMapPage() {
                                 {cam.name}
                               </span>
                               <span className="text-[10px] text-zinc-400 font-mono">
-                                {cam.resolution} • {cam.fps} FPS
+                                {cam.resolution ?? NO_DATA} • {fmtNumber(cam.fps, 0)} FPS
                               </span>
                             </div>
                           </div>
@@ -594,7 +595,7 @@ export default function SiteMapPage() {
                           </div>
                           <div className="text-right">
                             <span className="font-bold font-mono text-blue-600 dark:text-blue-400 block text-xs">
-                              {s.value} {s.unit}
+                              {fmtNumber(s.value, 2)} {s.unit}
                             </span>
                             <span className="text-[9px] text-zinc-400 uppercase font-mono">
                               {s.status}
@@ -748,7 +749,7 @@ export default function SiteMapPage() {
                           </Badge>
                         </div>
                         <div className="flex items-center justify-between text-[10px] text-zinc-500 font-mono">
-                          <span>{cam.resolution || "1080p"} • {cam.fps} FPS</span>
+                          <span>{cam.resolution ?? NO_DATA} • {fmtNumber(cam.fps, 0)} FPS</span>
                           <span className="text-emerald-500 font-bold uppercase flex items-center gap-1">
                             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                             Live Stream
@@ -784,7 +785,7 @@ export default function SiteMapPage() {
                         </div>
                         <div className="flex items-center justify-between text-[10px] font-mono">
                           <span className="text-blue-500 font-bold text-xs">
-                            {sensor.value} {sensor.unit}
+                            {fmtNumber(sensor.value, 2)} {sensor.unit}
                           </span>
                           <span className="text-zinc-500">
                             Batt: {sensor.battery_level}% • {sensor.status.toUpperCase()}

@@ -248,7 +248,7 @@ export default function IncidentDetailPage() {
           <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 p-5 space-y-3">
             <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
               <Paperclip className="h-3.5 w-3.5" />
-              Evidence Attachments ({incident.attachments?.length || 2})
+              Evidence Attachments ({incident.attachments?.length ?? 0})
             </h3>
             <div className="space-y-2">
               {(incident.attachments || []).map((file: any) => (

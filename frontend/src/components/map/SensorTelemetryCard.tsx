@@ -21,6 +21,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ParsedSensorNode, ParsedZone } from "@/lib/mapUtils";
+import { useLiveStore } from "@/stores/liveStore";
+import { NO_DATA, fmtNumber, fmtPct } from "@/lib/format";
 import { toast } from "sonner";
 
 interface SensorTelemetryCardProps {
@@ -36,42 +38,30 @@ export function SensorTelemetryCard({
   onSelectZone,
   onClose,
 }: SensorTelemetryCardProps) {
-  const [liveValue, setLiveValue] = useState(sensor.value);
-  const [history, setHistory] = useState<number[]>(
-    sensor.history || [sensor.value * 0.95, sensor.value * 0.98, sensor.value]
-  );
-  const [lastUpdate, setLastUpdate] = useState("Just now");
-  const [rssi, setRssi] = useState(-66);
+  // Real readings only: latest/history from the Socket.IO live store, else the map payload
+  const live = useLiveStore((st) => st.sensorLatest[sensor.id]);
+  const livePoints = useLiveStore((st) => st.sensorHistory[sensor.id]);
+  const liveValue: number | null = live?.value ?? sensor.value;
+  const history: number[] = livePoints?.length ? livePoints.map((p) => p.val) : sensor.history ?? [];
+  const lastUpdate = live ? new Date(live.ts).toLocaleTimeString() : null;
 
-  const minThresh = sensor.min_threshold ?? 0;
-  const maxThresh = sensor.max_threshold ?? 100;
-  const range = maxThresh - minThresh || 1;
-  const pct = Math.min(100, Math.max(0, ((liveValue - minThresh) / range) * 100));
+  const minThresh = sensor.min_threshold;
+  const maxThresh = sensor.max_threshold;
+  const hasEnvelope = minThresh !== undefined && maxThresh !== undefined && maxThresh > minThresh;
+  const pct =
+    hasEnvelope && liveValue !== null
+      ? Math.min(100, Math.max(0, ((liveValue - minThresh) / (maxThresh - minThresh)) * 100))
+      : 0;
 
-  // Live telemetry stream simulator
-  useEffect(() => {
-    const timer = setInterval(() => {
-      // Gentle realistic fluctuation
-      const delta = (Math.random() - 0.48) * (sensor.sensor_type === "temperature" ? 0.2 : sensor.sensor_type === "gas" ? 0.4 : 0.1);
-      const nextVal = Number(Math.max(0, liveValue + delta).toFixed(2));
-      setLiveValue(nextVal);
-      setHistory((prev) => [...prev.slice(-14), nextVal]);
-      setLastUpdate("0s ago");
-      setRssi(-65 - Math.floor(Math.random() * 5));
-    }, 2500);
-
-    return () => clearInterval(timer);
-  }, [liveValue, sensor.sensor_type]);
-
-  // Is reading safe?
-  const isHigh = liveValue >= maxThresh * 0.85;
-  const isCritical = liveValue >= maxThresh;
+  // Status relative to the sensor's configured thresholds (if any)
+  const isHigh = hasEnvelope && liveValue !== null && liveValue >= maxThresh * 0.85;
+  const isCritical = hasEnvelope && liveValue !== null && liveValue >= maxThresh;
 
   // Generate SVG sparkline points
   const sparkWidth = 260;
   const sparkHeight = 65;
-  const minH = Math.min(...history) * 0.95;
-  const maxH = Math.max(...history) * 1.05 || minH + 1;
+  const minH = history.length ? Math.min(...history) * 0.95 : 0;
+  const maxH = history.length ? Math.max(...history) * 1.05 || minH + 1 : 1;
   const points = history
     .map((val, idx) => {
       const x = (idx / (history.length - 1 || 1)) * sparkWidth;
@@ -94,7 +84,7 @@ export function SensorTelemetryCard({
             {sensor.name}
           </CardTitle>
           <CardDescription className="text-[11px] font-mono text-zinc-500">
-            Node ID: {sensor.code} • Telemetry Stream: 1 Hz
+            Node ID: {sensor.code}
           </CardDescription>
         </div>
         <button
@@ -114,7 +104,7 @@ export function SensorTelemetryCard({
             </span>
             <div className="flex items-baseline gap-2 mt-0.5">
               <span className="text-3xl font-black font-mono text-blue-600 dark:text-blue-400">
-                {liveValue}
+                {fmtNumber(liveValue, 2)}
               </span>
               <span className="text-sm font-bold text-zinc-500 font-mono">
                 {sensor.unit}
@@ -122,32 +112,34 @@ export function SensorTelemetryCard({
             </div>
             <div className="flex items-center gap-1.5 mt-1 text-[11px] font-mono text-zinc-500">
               <Activity className="h-3 w-3 text-emerald-500 animate-pulse" />
-              <span>Packet received: {lastUpdate}</span>
+              <span>{lastUpdate ? `Last reading: ${lastUpdate}` : "No live reading yet"}</span>
             </div>
           </div>
 
           <div className="flex flex-col items-end gap-1.5">
             <Badge
-              variant={isCritical ? "destructive" : isHigh ? "warning" : "success"}
+              variant={isCritical ? "destructive" : isHigh ? "warning" : hasEnvelope ? "success" : "outline"}
               className="text-[10px] font-mono uppercase px-2 py-0.5"
             >
-              {isCritical ? "CRITICAL SPIKE" : isHigh ? "ELEVATED" : "OPTIMAL RANGE"}
+              {!hasEnvelope || liveValue === null
+                ? "NO THRESHOLDS"
+                : isCritical
+                ? "ABOVE MAX"
+                : isHigh
+                ? "NEAR MAX"
+                : "WITHIN RANGE"}
             </Badge>
-            <div className="flex items-center gap-1 text-[10px] font-mono text-zinc-400">
-              <Wifi className="h-3 w-3 text-emerald-500" />
-              <span>{rssi} dBm</span>
-            </div>
           </div>
         </div>
 
         {/* Operating Envelope Progress Bar */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between text-[11px] font-mono text-zinc-500">
-            <span>Safe Floor: {minThresh} {sensor.unit}</span>
+            <span>Min: {fmtNumber(minThresh)} {sensor.unit}</span>
             <span className="font-bold text-zinc-700 dark:text-zinc-300">
-              {pct.toFixed(0)}% of Max
+              {hasEnvelope && liveValue !== null ? `${pct.toFixed(0)}% of range` : NO_DATA}
             </span>
-            <span>Warning Ceiling: {maxThresh} {sensor.unit}</span>
+            <span>Max: {fmtNumber(maxThresh)} {sensor.unit}</span>
           </div>
           <div className="h-2 w-full rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden relative">
             <div
@@ -168,9 +160,9 @@ export function SensorTelemetryCard({
           <div className="flex items-center justify-between text-[10px] font-mono text-zinc-500">
             <span className="flex items-center gap-1">
               <Gauge className="h-3 w-3 text-blue-500" />
-              15-Minute Telemetry Trend
+              Recent readings ({history.length})
             </span>
-            <span className="text-emerald-500 font-bold uppercase">Streaming</span>
+            <span className="text-zinc-500 font-bold uppercase">{live ? "Live" : "Idle"}</span>
           </div>
           <div className="h-[70px] w-full flex items-center justify-center">
             <svg viewBox={`0 0 ${sparkWidth} ${sparkHeight}`} className="w-full h-full overflow-visible">
@@ -220,16 +212,16 @@ export function SensorTelemetryCard({
             <div>
               <span className="text-[10px] text-zinc-400 block font-mono">Battery Reserve</span>
               <span className="font-bold text-zinc-900 dark:text-zinc-100 font-mono">
-                {sensor.battery_level ?? 95}% Li-Ion
+                {fmtPct(live?.battery ?? sensor.battery_level, 0)}
               </span>
             </div>
           </div>
           <div className="p-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-850/50 border border-zinc-200 dark:border-zinc-800 flex items-center gap-2">
             <Clock className="h-4 w-4 text-blue-500" />
             <div>
-              <span className="text-[10px] text-zinc-400 block font-mono">Sync Interval</span>
+              <span className="text-[10px] text-zinc-400 block font-mono">Last Reading</span>
               <span className="font-bold text-zinc-900 dark:text-zinc-100 font-mono">
-                1000 ms (1 Hz)
+                {lastUpdate ?? NO_DATA}
               </span>
             </div>
           </div>

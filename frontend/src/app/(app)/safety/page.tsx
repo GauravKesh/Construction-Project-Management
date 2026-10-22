@@ -27,6 +27,7 @@ import { useProjectStore } from "@/stores/projectStore";
 import { apiClient } from "@/lib/api/client";
 import { normalizeList } from "@/lib/utils";
 import { toast } from "sonner";
+import { NO_DATA, fmtNumber, fmtPct } from "@/lib/format";
 
 export default function SafetyPpePage() {
   const activeSiteId = useProjectStore((s) => s.activeSiteId);
@@ -49,7 +50,10 @@ export default function SafetyPpePage() {
   // Fetch summary
   const { data: ppeSummary } = useQuery({
     queryKey: ["safety-ppe-summary", activeSiteId],
-    queryFn: () => apiClient.get<any>("/api/v1/safety/ppe/summary"),
+    queryFn: () =>
+      apiClient.get<any>("/api/v1/safety/ppe/summary", {
+        params: activeSiteId ? { site_id: activeSiteId } : undefined,
+      }),
   });
 
   // Fetch violations
@@ -135,54 +139,52 @@ export default function SafetyPpePage() {
         <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card className="border-zinc-200 dark:border-zinc-800 p-5">
-              <span className="text-xs uppercase font-mono font-bold text-zinc-400">Overall Compliance</span>
+              <span className="text-xs uppercase font-mono font-bold text-zinc-400">Frame Compliance</span>
               <div className="mt-2 flex items-baseline gap-2">
                 <span className="font-mono text-3xl font-black text-emerald-500">
-                  {ppeSummary?.compliance_rate ?? 96.4}%
+                  {fmtPct(ppeSummary?.compliance_rate)}
                 </span>
-                <span className="text-xs text-zinc-400">Target &gt;95%</span>
               </div>
               <span className="text-[11px] text-zinc-400 mt-2 block">
-                1,840 inspections processed today
+                {fmtNumber(ppeSummary?.compliant_frames, 0)} of {fmtNumber(ppeSummary?.total_frames, 0)} frames
+                compliant
               </span>
             </Card>
 
             <Card className="border-zinc-200 dark:border-zinc-800 p-5">
-              <span className="text-xs uppercase font-mono font-bold text-zinc-400">Hard Hat Compliance</span>
+              <span className="text-xs uppercase font-mono font-bold text-zinc-400">Person Compliance</span>
               <div className="mt-2 flex items-baseline gap-2">
-                <span className="font-mono text-3xl font-black text-zinc-100">
-                  {ppeSummary?.breakdown?.hard_hat?.compliant ?? 98.2}%
+                <span className="font-mono text-3xl font-black text-zinc-900 dark:text-zinc-100">
+                  {fmtPct(ppeSummary?.person_compliance_rate)}
                 </span>
-                <span className="text-xs text-red-400">5 violations</span>
               </div>
               <span className="text-[11px] text-zinc-400 mt-2 block">
-                Mandatory across all active zones
+                {fmtNumber(ppeSummary?.violating_persons, 0)} of {fmtNumber(ppeSummary?.total_persons, 0)} detected
+                persons missing PPE
               </span>
             </Card>
 
             <Card className="border-zinc-200 dark:border-zinc-800 p-5">
-              <span className="text-xs uppercase font-mono font-bold text-zinc-400">Hi-Vis Vest Compliance</span>
+              <span className="text-xs uppercase font-mono font-bold text-zinc-400">Violation Frames</span>
               <div className="mt-2 flex items-baseline gap-2">
-                <span className="font-mono text-3xl font-black text-zinc-100">
-                  {ppeSummary?.breakdown?.hi_vis_vest?.compliant ?? 97.4}%
+                <span className="font-mono text-3xl font-black text-zinc-900 dark:text-zinc-100">
+                  {fmtNumber(ppeSummary?.violations_frames, 0)}
                 </span>
-                <span className="text-xs text-amber-400">7 violations</span>
               </div>
-              <span className="text-[11px] text-zinc-400 mt-2 block">
-                Day & night high-contrast visibility
-              </span>
+              <span className="text-[11px] text-zinc-400 mt-2 block">Frames with at least one violation</span>
             </Card>
 
             <Card className="border-zinc-200 dark:border-zinc-800 p-5">
-              <span className="text-xs uppercase font-mono font-bold text-zinc-400">Safety Harness Compliance</span>
+              <span className="text-xs uppercase font-mono font-bold text-zinc-400">Detector</span>
               <div className="mt-2 flex items-baseline gap-2">
-                <span className="font-mono text-3xl font-black text-zinc-100">
-                  {ppeSummary?.breakdown?.harness?.compliant ?? 95.8}%
+                <span className="font-mono text-lg font-black text-zinc-900 dark:text-zinc-100 break-all">
+                  {ppeSummary?.detectors?.length ? ppeSummary.detectors.join(", ") : NO_DATA}
                 </span>
-                <span className="text-xs text-emerald-400">1 violation</span>
               </div>
               <span className="text-[11px] text-zinc-400 mt-2 block">
-                Monitored on scaffolding and heights
+                {ppeSummary?.detectors?.some((d: string) => d.startsWith("mock"))
+                  ? "Includes MOCK detections: synthetic, not real model output"
+                  : "Source of the detections above"}
               </span>
             </Card>
           </div>

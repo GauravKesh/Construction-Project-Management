@@ -23,6 +23,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ParsedCameraNode, ParsedZone } from "@/lib/mapUtils";
+import { useLiveStore } from "@/stores/liveStore";
+import { NO_DATA, fmtNumber } from "@/lib/format";
 import { toast } from "sonner";
 
 interface CameraLiveFeedCardProps {
@@ -40,13 +42,11 @@ export function CameraLiveFeedCard({
 }: CameraLiveFeedCardProps) {
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(true);
-  const [showAiOverlay, setShowAiOverlay] = useState(true);
-  const [fps, setFps] = useState(camera.fps || 30);
-  const [latency, setLatency] = useState(22);
   const [currentTime, setCurrentTime] = useState("");
+  // Latest real CV result for this camera (pushed over Socket.IO); undefined until one arrives
+  const detection = useLiveStore((st) => st.latestDetections[camera.id]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // Real-time time ticker
   useEffect(() => {
@@ -63,15 +63,6 @@ export function CameraLiveFeedCard({
     return () => clearInterval(interval);
   }, []);
 
-  // Slight realistic latency fluctuation
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setLatency(Math.floor(20 + Math.random() * 6));
-      setFps(Number(((camera.fps || 30) - 0.5 + Math.random()).toFixed(1)));
-    }, 2500);
-    return () => clearInterval(timer);
-  }, [camera.fps]);
-
   // Video source handling
   useEffect(() => {
     if (videoRef.current) {
@@ -80,112 +71,6 @@ export function CameraLiveFeedCard({
       setIsPlaying(true);
     }
   }, [camera.video_url]);
-
-  // AI Bounding Box Canvas Renderer
-  useEffect(() => {
-    if (!showAiOverlay) {
-      const canvas = canvasRef.current;
-      if (canvas) {
-        const ctx = canvas.getContext("2d");
-        ctx?.clearRect(0, 0, canvas.width, canvas.height);
-      }
-      return;
-    }
-
-    let animId: number;
-    let t = 0;
-
-    const render = () => {
-      t += 0.03;
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-
-      const w = canvas.width;
-      const h = canvas.height;
-      ctx.clearRect(0, 0, w, h);
-
-      // Simulated detected worker boxes
-      const boxes = [
-        {
-          x: w * 0.18 + Math.sin(t) * 8,
-          y: h * 0.35 + Math.cos(t * 0.8) * 4,
-          bw: w * 0.16,
-          bh: h * 0.42,
-          label: "Worker #104",
-          helmet: "Hard Hat: 99%",
-          vest: "Hi-Vis: 98%",
-          color: "#10b981",
-        },
-        {
-          x: w * 0.48 + Math.cos(t * 0.7) * 10,
-          y: h * 0.4 + Math.sin(t * 0.6) * 5,
-          bw: w * 0.15,
-          bh: h * 0.44,
-          label: "Foreman #22",
-          helmet: "Hard Hat: 98%",
-          vest: "Hi-Vis: 100%",
-          color: "#10b981",
-        },
-        {
-          x: w * 0.72 + Math.sin(t * 0.5) * 6,
-          y: h * 0.32 + Math.cos(t * 0.9) * 4,
-          bw: w * 0.18,
-          bh: h * 0.46,
-          label: "Ironworker #89",
-          helmet: "Hard Hat: 96%",
-          vest: "Hi-Vis: 94%",
-          color: "#10b981",
-        },
-      ];
-
-      boxes.forEach((b) => {
-        // Bounding box rectangle
-        ctx.strokeStyle = b.color;
-        ctx.lineWidth = 2;
-        ctx.strokeRect(b.x, b.y, b.bw, b.bh);
-
-        // Semi-transparent fill on highlight
-        ctx.fillStyle = "rgba(16, 185, 129, 0.08)";
-        ctx.fillRect(b.x, b.y, b.bw, b.bh);
-
-        // Header tag background
-        ctx.fillStyle = "rgba(16, 185, 129, 0.88)";
-        ctx.fillRect(b.x, b.y - 20, b.bw, 20);
-
-        // Header label text
-        ctx.fillStyle = "#ffffff";
-        ctx.font = "bold 10px monospace";
-        ctx.fillText(b.label, b.x + 4, b.y - 6);
-
-        // Corner tick marks
-        const cl = 6;
-        ctx.strokeStyle = "#ffffff";
-        ctx.lineWidth = 2;
-        // Top-left
-        ctx.beginPath();
-        ctx.moveTo(b.x, b.y + cl);
-        ctx.lineTo(b.x, b.y);
-        ctx.lineTo(b.x + cl, b.y);
-        ctx.stroke();
-        // Top-right
-        ctx.beginPath();
-        ctx.moveTo(b.x + b.bw - cl, b.y);
-        ctx.lineTo(b.x + b.bw, b.y);
-        ctx.lineTo(b.x + b.bw, b.y + cl);
-        ctx.stroke();
-      });
-
-      animId = requestAnimationFrame(render);
-    };
-
-    render();
-
-    return () => {
-      cancelAnimationFrame(animId);
-    };
-  }, [showAiOverlay]);
 
   const togglePlay = () => {
     if (!videoRef.current) return;
@@ -240,14 +125,6 @@ export function CameraLiveFeedCard({
             className="w-full h-full object-cover"
           />
 
-          {/* AI Detection Overlay Canvas */}
-          <canvas
-            ref={canvasRef}
-            width={640}
-            height={360}
-            className="absolute inset-0 w-full h-full pointer-events-none"
-          />
-
           {/* Top Video HUD Info */}
           <div className="absolute top-2 left-2 right-2 flex items-center justify-between pointer-events-none text-[10px] font-mono font-bold text-white drop-shadow-md">
             <div className="flex items-center gap-2">
@@ -264,7 +141,7 @@ export function CameraLiveFeedCard({
                 {currentTime}
               </span>
               <span className="bg-black/60 px-1.5 py-0.5 rounded backdrop-blur-sm text-emerald-400">
-                {fps} FPS
+                {fmtNumber(camera.fps, 0)} FPS (configured)
               </span>
             </div>
           </div>
@@ -291,17 +168,17 @@ export function CameraLiveFeedCard({
             </div>
 
             <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => setShowAiOverlay((v) => !v)}
-                className={`px-2 py-1 rounded text-[10px] font-mono font-bold transition-all backdrop-blur-md border ${
-                  showAiOverlay
+              <span
+                className={`px-2 py-1 rounded text-[10px] font-mono font-bold backdrop-blur-md border ${
+                  !detection
+                    ? "bg-black/70 text-zinc-400 border-white/10"
+                    : detection.compliant
                     ? "bg-emerald-500/90 text-white border-emerald-400"
-                    : "bg-black/70 text-zinc-400 border-white/10 hover:text-white"
+                    : "bg-red-500/90 text-white border-red-400"
                 }`}
               >
-                AI YOLO: {showAiOverlay ? "ON" : "OFF"}
-              </button>
+                CV: {!detection ? "NO RESULTS" : detection.compliant ? "COMPLIANT" : "VIOLATION"}
+              </span>
             </div>
           </div>
         </div>
@@ -309,21 +186,29 @@ export function CameraLiveFeedCard({
         {/* Real-time Computer Vision Metrics */}
         <div className="grid grid-cols-3 gap-2 text-center text-xs">
           <div className="p-2.5 rounded-lg bg-zinc-100 dark:bg-zinc-850/80 border border-zinc-200 dark:border-zinc-800">
-            <span className="text-[10px] text-zinc-500 uppercase font-mono block">Workers in View</span>
+            <span className="text-[10px] text-zinc-500 uppercase font-mono block">Persons (last frame)</span>
             <span className="text-base font-black text-zinc-900 dark:text-zinc-50 font-mono">
-              {camera.workers_detected || 6}
+              {fmtNumber(detection?.persons_count, 0)}
             </span>
           </div>
           <div className="p-2.5 rounded-lg bg-zinc-100 dark:bg-zinc-850/80 border border-zinc-200 dark:border-zinc-800">
-            <span className="text-[10px] text-zinc-500 uppercase font-mono block">PPE Compliance</span>
-            <span className="text-base font-black text-emerald-500 font-mono">
-              {camera.ppe_compliance_pct || 98}%
+            <span className="text-[10px] text-zinc-500 uppercase font-mono block">Latest Frame</span>
+            <span
+              className={`text-base font-black font-mono ${
+                !detection ? "text-zinc-400" : detection.compliant ? "text-emerald-500" : "text-red-500"
+              }`}
+            >
+              {!detection
+                ? NO_DATA
+                : detection.compliant
+                ? "OK"
+                : detection.missing_ppe.map((m) => m.replace("missing_", "")).join(", ")}
             </span>
           </div>
           <div className="p-2.5 rounded-lg bg-zinc-100 dark:bg-zinc-850/80 border border-zinc-200 dark:border-zinc-800">
-            <span className="text-[10px] text-zinc-500 uppercase font-mono block">Edge Latency</span>
+            <span className="text-[10px] text-zinc-500 uppercase font-mono block">Last CV Result</span>
             <span className="text-base font-black text-blue-500 font-mono">
-              {latency} ms
+              {detection ? new Date(detection.ts).toLocaleTimeString() : NO_DATA}
             </span>
           </div>
         </div>

@@ -375,13 +375,13 @@ export default function ProjectsPage() {
                 <div>
                   <span className="text-zinc-500 block text-[10px] uppercase">Start Date</span>
                   <span className="font-bold text-zinc-800 dark:text-zinc-200">
-                    {proj.start_date || "2026-01-15"}
+                    {proj.start_date ?? "—"}
                   </span>
                 </div>
                 <div>
                   <span className="text-zinc-500 block text-[10px] uppercase">Target End</span>
                   <span className="font-bold text-zinc-800 dark:text-zinc-200">
-                    {proj.end_date || "2027-12-31"}
+                    {proj.end_date ?? "—"}
                   </span>
                 </div>
               </div>

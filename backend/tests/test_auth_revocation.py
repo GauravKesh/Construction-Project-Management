@@ -76,3 +76,23 @@ async def test_socket_room_access_follows_project_membership(db_session, admin_u
     finally:
         await db_session.delete(outsider)
         await db_session.commit()
+
+
+@pytest.mark.asyncio
+async def test_http_ingest_requires_credentials(async_client: httpx.AsyncClient, admin_headers, monkeypatch):
+    from app.core.config import settings
+
+    payload = {"sensor_id": "ingest-auth-test", "site_id": "s", "type": "gas", "value": 1.0, "unit": "ppm"}
+    anonymous = await async_client.post("/api/v1/telemetry/ingest", json=payload)
+    assert anonymous.status_code == 401
+
+    monkeypatch.setattr(settings, "INGEST_API_KEY", "device-secret-for-tests")
+    wrong_key = await async_client.post("/api/v1/telemetry/ingest", json=payload, headers={"X-API-Key": "nope"})
+    assert wrong_key.status_code == 401
+    device = await async_client.post(
+        "/api/v1/telemetry/ingest", json=payload, headers={"X-API-Key": "device-secret-for-tests"}
+    )
+    assert device.status_code == 200
+
+    user = await async_client.post("/api/v1/telemetry/ingest", json=payload, headers=admin_headers)
+    assert user.status_code == 200

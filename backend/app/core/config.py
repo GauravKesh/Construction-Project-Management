@@ -109,6 +109,10 @@ class Settings(BaseSettings):
     CV_CONFIDENCE_THRESHOLD: float = 0.45
     CV_INFERENCE_FPS: int = 2
 
+    # Shared secret for device ingestion over HTTP (X-API-Key on /telemetry/ingest).
+    # Unset = only authenticated users may ingest over HTTP.
+    INGEST_API_KEY: Optional[str] = None
+
     # Notifications
     NOTIFY_PROVIDER_EMAIL: str = "console"
     NOTIFY_PROVIDER_SMS: str = "console"

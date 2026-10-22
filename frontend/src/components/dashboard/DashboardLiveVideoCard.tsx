@@ -69,14 +69,12 @@ export function DashboardLiveVideoCard() {
   const [selectedChannel, setSelectedChannel] = useState<CameraPreset>(PRESET_CHANNELS[0]);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(true);
-  const [showAiOverlay, setShowAiOverlay] = useState(true);
   const [currentTime, setCurrentTime] = useState("");
   const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
   const [customUrl, setCustomUrl] = useState("");
   const [customName, setCustomName] = useState("Custom Hardware RTSP Node");
 
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const webcamStreamRef = useRef<MediaStream | null>(null);
 
@@ -136,75 +134,6 @@ export function DashboardLiveVideoCard() {
     }
   }, [selectedChannel]);
 
-  // AI Bounding Box Canvas Renderer
-  useEffect(() => {
-    if (!showAiOverlay) {
-      const canvas = canvasRef.current;
-      if (canvas) {
-        const ctx = canvas.getContext("2d");
-        ctx?.clearRect(0, 0, canvas.width, canvas.height);
-      }
-      return;
-    }
-
-    let animationFrameId: number;
-    let angle = 0;
-
-    const renderBoxes = () => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      angle += 0.02;
-      const floatY = Math.sin(angle) * 3;
-
-      // Detection 1: Worker 104 (Compliant - Green)
-      const b1 = { x: 120, y: 70 + floatY, w: 110, h: 210 };
-      ctx.strokeStyle = "#10b981";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(b1.x, b1.y, b1.w, b1.h);
-
-      // Corner brackets
-      ctx.fillStyle = "#10b981";
-      ctx.fillRect(b1.x - 2, b1.y - 2, 8, 8);
-      ctx.fillRect(b1.x + b1.w - 6, b1.y - 2, 8, 8);
-      ctx.fillRect(b1.x - 2, b1.y + b1.h - 6, 8, 8);
-      ctx.fillRect(b1.x + b1.w - 6, b1.y + b1.h - 6, 8, 8);
-
-      // Label background & text
-      ctx.fillStyle = "rgba(16, 185, 129, 0.9)";
-      ctx.fillRect(b1.x, Math.max(0, b1.y - 18), 160, 18);
-      ctx.fillStyle = "#ffffff";
-      ctx.font = "bold 10px monospace";
-      ctx.fillText("WORKER #104 [98%] ✓ PPE", b1.x + 4, Math.max(12, b1.y - 5));
-
-      // Detection 2: Worker 217 (Warning / Missing Hardhat - Amber/Red)
-      const b2 = { x: 380, y: 85 - floatY, w: 105, h: 200 };
-      ctx.strokeStyle = "#ef4444";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(b2.x, b2.y, b2.w, b2.h);
-
-      ctx.fillStyle = "#ef4444";
-      ctx.fillRect(b2.x - 2, b2.y - 2, 8, 8);
-      ctx.fillRect(b2.x + b2.w - 6, b2.y - 2, 8, 8);
-      ctx.fillRect(b2.x - 2, b2.y + b2.h - 6, 8, 8);
-      ctx.fillRect(b2.x + b2.w - 6, b2.y + b2.h - 6, 8, 8);
-
-      ctx.fillStyle = "rgba(239, 68, 68, 0.9)";
-      ctx.fillRect(b2.x, Math.max(0, b2.y - 18), 175, 18);
-      ctx.fillStyle = "#ffffff";
-      ctx.font = "bold 10px monospace";
-      ctx.fillText("WORKER #217 [94%] ⚠️ NO HARD HAT", b2.x + 4, Math.max(12, b2.y - 5));
-
-      animationFrameId = requestAnimationFrame(renderBoxes);
-    };
-
-    animationFrameId = requestAnimationFrame(renderBoxes);
-    return () => cancelAnimationFrame(animationFrameId);
-  }, [showAiOverlay]);
 
   const togglePlay = () => {
     if (!videoRef.current) return;
@@ -282,15 +211,15 @@ export function DashboardLiveVideoCard() {
                 <Video className="h-4 w-4" />
               </div>
               <CardTitle className="text-sm font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                Live Site Vision & AI Stream
-                <Badge variant="outline" className="border-emerald-500/40 text-emerald-600 dark:text-emerald-400 font-mono text-[10px] gap-1 px-1.5 py-0">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  REAL FEED
+                Site Camera Viewer
+                <Badge variant="outline" className="font-mono text-[10px] px-1.5 py-0">
+                  {selectedChannel.sourceType === "webcam" ? "WEBCAM" : "VIDEO FILE"}
                 </Badge>
               </CardTitle>
             </div>
             <CardDescription className="text-xs text-zinc-500 dark:text-zinc-400">
-              Low-latency edge RTSP video streaming with real-time YOLOv8 PPE detection.
+              Plays the configured camera sources (local video files or your webcam). Video is not analysed in the
+              browser; computer-vision results are on the Safety page.
             </CardDescription>
           </div>
 
@@ -344,19 +273,12 @@ export function DashboardLiveVideoCard() {
             {/* Scanline CRT overlay for industrial control room aesthetic */}
             <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.22)_50%)] bg-[size:100%_4px] pointer-events-none opacity-60" />
 
-            {/* AI Bounding Box Canvas Overlay */}
-            <canvas
-              ref={canvasRef}
-              width={640}
-              height={360}
-              className="absolute inset-0 w-full h-full pointer-events-none z-10"
-            />
 
             {/* Top-Left: Live Stream & Rec Indicator */}
             <div className="absolute top-3 left-3 z-20 flex items-center gap-2">
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-black/75 backdrop-blur-md border border-white/10 text-white font-mono text-[11px] font-bold shadow-lg">
                 <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-                <span>REC • LIVE</span>
+                <span>{selectedChannel.sourceType === "webcam" ? "LIVE" : "PLAYBACK"}</span>
               </div>
               <div className="hidden sm:flex items-center px-2 py-1 rounded-md bg-black/60 backdrop-blur-md text-[10px] font-mono text-zinc-300 border border-white/5">
                 {selectedChannel.location}
@@ -376,16 +298,6 @@ export function DashboardLiveVideoCard() {
             <div className="absolute bottom-12 left-3 z-20 hidden md:flex items-center gap-2 text-[10px] font-mono text-zinc-300 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded border border-white/10">
               <Radio className="h-3 w-3 text-amber-400" />
               <span>{selectedChannel.resolution}</span>
-              <span>•</span>
-              <span>Bitrate: 4.8 Mbps</span>
-              <span>•</span>
-              <span>Latency: 32ms</span>
-            </div>
-
-            {/* Bottom-Right: Violation Flag Banner */}
-            <div className="absolute bottom-12 right-3 z-20 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-red-950/80 border border-red-500/50 text-red-300 font-mono text-[10px] font-bold backdrop-blur-md shadow-lg">
-              <AlertTriangle className="h-3 w-3 text-red-400 shrink-0" />
-              <span>1 Hazard Flagged (Zone 4)</span>
             </div>
 
             {/* Control Bar Overlay (appears on hover / always accessible) */}
@@ -404,18 +316,6 @@ export function DashboardLiveVideoCard() {
                   title={isMuted ? "Unmute Audio" : "Mute Audio"}
                 >
                   {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                </button>
-                <button
-                  onClick={() => setShowAiOverlay(!showAiOverlay)}
-                  className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-mono font-bold transition-all ${
-                    showAiOverlay
-                      ? "bg-amber-500 text-zinc-950"
-                      : "bg-white/10 text-zinc-300 hover:bg-white/20"
-                  }`}
-                  title="Toggle Computer Vision Bounding Boxes"
-                >
-                  {showAiOverlay ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
-                  <span>AI Bounding Box</span>
                 </button>
               </div>
 

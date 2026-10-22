@@ -714,7 +714,7 @@ export default function SiteMapPage() {
                         <div className="flex items-center gap-2 text-[10px] text-zinc-500 dark:text-zinc-400">
                           <span className="uppercase font-mono">{zone.zone_type}</span>
                           <span>•</span>
-                          <span>{zone.coordinates?.length || 4} vertices</span>
+                          <span>{zone.coordinates?.length ?? 0} vertices</span>
                           {zone.area_sqm && (
                             <>
                               <span>•</span>

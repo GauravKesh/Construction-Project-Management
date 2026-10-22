@@ -7,6 +7,7 @@ import { CommandPalette } from "@/components/common/CommandPalette";
 import { useAuthStore } from "@/stores/authStore";
 import { apiClient } from "@/lib/api/client";
 import { env } from "@/env";
+import { ProjectSelectionSync } from "@/components/providers/ProjectSelectionSync";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const setUser = useAuthStore((s) => s.setUser);
@@ -52,6 +53,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </main>
       </div>
       <CommandPalette />
+      <ProjectSelectionSync />
     </div>
   );
 }

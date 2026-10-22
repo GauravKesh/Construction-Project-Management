@@ -1,7 +1,7 @@
 import math
 import uuid
 from datetime import datetime, timezone
-from typing import Optional
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
@@ -32,6 +32,7 @@ from app.schemas.auth import (
     UserUpdate,
 )
 from app.schemas.common import PaginatedResponse, StatusMessage
+from app.schemas.system import AuditLogResponse
 
 router = APIRouter(prefix="", tags=["Auth & Users"])
 
@@ -182,6 +183,16 @@ async def list_users(
     total = await user_repo.count()
     pages = math.ceil(total / page_size) if total > 0 else 1
     return PaginatedResponse(items=users, total=total, page=page, page_size=page_size, pages=pages)
+
+
+@router.get("/audit-logs", response_model=List[AuditLogResponse])
+async def list_audit_logs(
+    limit: int = Query(100, ge=1, le=500),
+    entity_type: Optional[str] = None,
+    audit_repo: AuditRepository = Depends(get_audit_repo),
+    current_user: User = Depends(require_roles([UserRole.ADMIN])),
+):
+    return await audit_repo.list_logs(limit=limit, entity_type=entity_type)
 
 
 @router.post("/users", response_model=UserResponse, status_code=status.HTTP_201_CREATED)

@@ -35,12 +35,11 @@ function setCookie(name: string, val: string) {
   document.cookie = `${name}=${encodeURIComponent(val)}; path=/; max-age=31536000; SameSite=Lax`;
 }
 
-const DEFAULT_PROJECT_ID = "4921c420-b413-48f3-b935-8fecf7708ce3";
-const DEFAULT_SITE_ID = "0907d5cb-7682-48b7-b78d-c999ce138f34";
-
+// Restore the last selection; ProjectSelectionSync replaces it with the first real
+// project/site when it is empty or no longer exists in this database.
 export const useProjectStore = create<ProjectState>((set) => ({
-  activeProjectId: DEFAULT_PROJECT_ID,
-  activeSiteId: DEFAULT_SITE_ID,
+  activeProjectId: getCookie("bt_selected_project_id") ?? "",
+  activeSiteId: getCookie("bt_selected_site_id") ?? "",
   currentProject: null,
   currentSite: null,
 

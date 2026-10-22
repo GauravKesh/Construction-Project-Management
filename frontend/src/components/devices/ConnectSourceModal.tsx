@@ -46,11 +46,12 @@ export function ConnectSourceModal({
   const [copied, setCopied] = useState(false);
 
   const activeSiteId = useProjectStore((s) => s.activeSiteId);
-  const generatedKey = `bt_dev_${activeSiteId ? activeSiteId.slice(0, 8) : "live"}_${Math.random().toString(36).slice(2, 8)}`;
+  // Devices authenticate with the backend's INGEST_API_KEY (see backend/.env.example)
+  const ingestKeyPlaceholder = "<INGEST_API_KEY from backend .env>";
 
-  const curlExample = `curl -X POST "http://localhost:3000/api/proxy/api/v1/telemetry/ingest" \\
+  const curlExample = `curl -X POST "http://localhost:8000/api/v1/telemetry/ingest" \\
   -H "Content-Type: application/json" \\
-  -H "X-Device-Token: ${generatedKey}" \\
+  -H "X-API-Key: ${ingestKeyPlaceholder}" \\
   -d '{
     "sensor_id": "custom-${sensorType}-01",
     "site_id": "${activeSiteId || "site-default"}",
@@ -62,10 +63,10 @@ export function ConnectSourceModal({
 
   const pythonExample = `import requests, time
 
-URL = "http://localhost:3000/api/proxy/api/v1/telemetry/ingest"
+URL = "http://localhost:8000/api/v1/telemetry/ingest"
 HEADERS = {
     "Content-Type": "application/json",
-    "X-Device-Token": "${generatedKey}"
+    "X-API-Key": "${ingestKeyPlaceholder}"
 }
 
 payload = {
@@ -85,26 +86,6 @@ print("Ingest status:", response.status_code)`;
     setCopied(true);
     toast.success("Command copied to clipboard");
     setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleSendTestReading = () => {
-    const testReading = {
-      sensor_id: `custom-${sensorType}-01`,
-      site_id: activeSiteId || "site-default",
-      type: sensorType,
-      value: +(35 + Math.random() * 25).toFixed(1),
-      unit: sensorType === "pm25" ? "µg/m³" : sensorType === "noise" ? "dB" : "°C",
-      ts: new Date().toISOString(),
-      battery: 98,
-      status: "healthy",
-      lastUpdated: Date.now(),
-    };
-
-    useLiveStore.getState().applySensorUpdates([testReading]);
-    toast.success(`Connected! Streamed sample packet from "${deviceName}"`, {
-      description: `Ingested ${testReading.value} ${testReading.unit} into live telemetry pool`,
-    });
-    setOpen(false);
   };
 
   return (
@@ -343,15 +324,6 @@ print("Ingest status:", response.status_code)`;
                 className="text-xs border-zinc-300 dark:border-zinc-700"
               >
                 Close
-              </Button>
-              <Button
-                variant="amber"
-                size="sm"
-                onClick={handleSendTestReading}
-                className="text-xs font-bold gap-1.5"
-              >
-                <Send className="h-3.5 w-3.5" />
-                Stream Live Test Packet
               </Button>
             </div>
           </div>

@@ -61,3 +61,13 @@ async def test_rbac_admin_only_route(async_client: httpx.AsyncClient, safety_hea
     # Admin should succeed or return user details
     resp_admin = await async_client.post("/api/v1/users", json=user_payload, headers=admin_headers)
     assert resp_admin.status_code in [200, 201]
+
+
+@pytest.mark.asyncio
+async def test_audit_logs_are_admin_only(async_client: httpx.AsyncClient, admin_headers, safety_headers):
+    resp = await async_client.get("/api/v1/audit-logs", headers=safety_headers)
+    assert resp.status_code == 403
+
+    resp = await async_client.get("/api/v1/audit-logs", headers=admin_headers)
+    assert resp.status_code == 200
+    assert isinstance(resp.json(), list)

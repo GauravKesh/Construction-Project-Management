@@ -1,9 +1,11 @@
+import hmac
 import json
 import math
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from fastapi.security import HTTPAuthorizationCredentials
 from app.core.config import settings
 from app.core.dependencies import (
     get_audit_repo,
@@ -16,7 +18,7 @@ from app.db.redis import get_redis_client, KEY_STREAM_INGEST
 from app.db.repositories.audit_repo import AuditRepository
 from app.db.repositories.sensor_repo import SensorRepository
 from app.db.repositories.telemetry_repo import TelemetryRepository
-from app.gateway.auth import get_current_user
+from app.gateway.auth import get_current_user, get_current_user_payload, security_scheme
 from app.gateway.rbac import check_site_access, require_roles
 from app.schemas.common import PaginatedResponse, StatusMessage
 from app.schemas.sensor import (
@@ -212,12 +214,24 @@ async def get_site_latest_telemetry(
 async def http_telemetry_ingest(
     payload: TelemetryIngestPayload,
     x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security_scheme),
 ):
     """
     HTTP fallback ingestion endpoint for IoT sensors / field gateways.
     Pushes reading into Redis Stream 'stream:ingest' just like the MQTT consumer.
+
+    Requires either the device key (X-API-Key == INGEST_API_KEY) or a valid user
+    access token, so the telemetry dataset cannot be written to anonymously.
     """
-    # Accept API key or allow in dev
+    key_ok = bool(
+        settings.INGEST_API_KEY
+        and x_api_key
+        and hmac.compare_digest(x_api_key.encode(), settings.INGEST_API_KEY.encode())
+    )
+    if not key_ok:
+        # Raises 401 for a missing, invalid, revoked or non-access token
+        await get_current_user_payload(credentials)
+
     r = get_redis_client()
     msg_data = {
         "sensor_id": payload.sensor_id,

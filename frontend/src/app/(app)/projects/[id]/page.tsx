@@ -51,6 +51,7 @@ import { normalizeList } from "@/lib/utils";
 import { useProjectStore } from "@/stores/projectStore";
 import { ConnectSourceModal } from "@/components/devices/ConnectSourceModal";
 import { toast } from "sonner";
+import { NO_DATA, fmtNumber, fmtPct } from "@/lib/format";
 
 // Standard Construction Phases for Capital Projects
 export interface ConstructionPhase {
@@ -324,6 +325,10 @@ export default function ProjectDetailPage() {
   const boq = normalizeList<any>(boqData);
   const manpower = normalizeList<any>(manpowerData);
   const materials = normalizeList<any>(materialsData);
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const manpowerToday = manpower.filter((m: any) => String(m.date).slice(0, 10) === todayIso);
+  const manpowerTodayActual = manpowerToday.reduce((sum: number, m: any) => sum + Number(m.actual_headcount ?? 0), 0);
+  const manpowerTodayPlanned = manpowerToday.reduce((sum: number, m: any) => sum + Number(m.planned_headcount ?? 0), 0);
   const drawings = normalizeList<any>(drawingsData);
 
   // Load custom phases from localStorage and sync with schedules
@@ -874,7 +879,7 @@ export default function ProjectDetailPage() {
           <div className="flex flex-wrap items-center gap-4 text-xs font-mono text-zinc-400 pt-1">
             <span className="flex items-center gap-1">
               <Calendar className="h-3.5 w-3.5 text-amber-500" />
-              {project.start_date || "2026-01-15"} → {project.end_date || "2028-12-31"}
+              {project.start_date ?? "—"} → {project.end_date ?? "—"}
             </span>
             <span>•</span>
             <span className="flex items-center gap-1">
@@ -1224,7 +1229,7 @@ export default function ProjectDetailPage() {
 
                                   <div className="flex items-center gap-2 text-xs font-mono text-zinc-400">
                                     <span>
-                                      {task.start_date || "2026-02-01"} → {task.end_date || "2026-06-30"}
+                                      {task.start_date ?? "—"} → {task.end_date ?? "—"}
                                     </span>
                                   </div>
                                 </div>
@@ -1468,11 +1473,11 @@ export default function ProjectDetailPage() {
                   <div className="text-[11px] font-mono text-zinc-400 bg-zinc-50 dark:bg-zinc-950 p-2 rounded-lg border border-zinc-200 dark:border-zinc-800 space-y-1">
                     <div className="flex justify-between">
                       <span className="text-zinc-500">Latitude:</span>
-                      <span className="font-bold text-zinc-300">{site.latitude ?? "28.6139"}</span>
+                      <span className="font-bold text-zinc-300">{site.latitude ?? "—"}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-zinc-500">Longitude:</span>
-                      <span className="font-bold text-zinc-300">{site.longitude ?? "77.2090"}</span>
+                      <span className="font-bold text-zinc-300">{site.longitude ?? "—"}</span>
                     </div>
                   </div>
                 </div>
@@ -1601,30 +1606,32 @@ export default function ProjectDetailPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 p-5">
               <span className="text-[10px] uppercase font-mono font-bold text-zinc-500 dark:text-zinc-400">
-                Total Today
+                Actual Headcount Today
               </span>
-              <div className="font-mono text-3xl font-black text-amber-500 mt-2">142 Pax</div>
-              <span className="text-xs text-zinc-500 mt-1 block">100% biometric verified</span>
+              <div className="font-mono text-3xl font-black text-amber-500 mt-2">
+                {manpowerToday.length ? `${manpowerTodayActual} Pax` : NO_DATA}
+              </div>
+              <span className="text-xs text-zinc-500 mt-1 block">From today&apos;s manpower log entries</span>
             </Card>
 
             <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 p-5">
               <span className="text-[10px] uppercase font-mono font-bold text-zinc-500 dark:text-zinc-400">
-                Active Subcontractors
+                Trades Logged Today
               </span>
               <div className="font-mono text-3xl font-black text-zinc-900 dark:text-zinc-100 mt-2">
-                6 Companies
+                {manpowerToday.length ? new Set(manpowerToday.map((m: any) => m.trade)).size : NO_DATA}
               </div>
-              <span className="text-xs text-zinc-500 mt-1 block">Civil, MEP, Steel, Facade</span>
+              <span className="text-xs text-zinc-500 mt-1 block">Distinct trades with a headcount entry</span>
             </Card>
 
             <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 p-5">
               <span className="text-[10px] uppercase font-mono font-bold text-zinc-500 dark:text-zinc-400">
-                Safety Induction
+                Plan Attainment
               </span>
               <div className="font-mono text-3xl font-black text-emerald-500 dark:text-emerald-400 mt-2">
-                100% Valid
+                {fmtPct(manpowerTodayPlanned > 0 ? (manpowerTodayActual / manpowerTodayPlanned) * 100 : null, 0)}
               </div>
-              <span className="text-xs text-zinc-500 mt-1 block">Zero expired safety badges</span>
+              <span className="text-xs text-zinc-500 mt-1 block">Actual vs planned headcount today</span>
             </Card>
           </div>
         </TabsContent>
@@ -1648,28 +1655,31 @@ export default function ProjectDetailPage() {
 
           <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 p-5 space-y-3">
             <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-              Recent Inbound Concrete & Rebar Shipments
+              Materials Register Summary
             </h3>
-            <div className="space-y-2 text-xs font-mono">
-              <div className="flex items-center justify-between p-3 rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800">
-                <div>
-                  <span className="text-amber-500 font-bold block">RMC Delivery #1042</span>
-                  <span className="text-zinc-600 dark:text-zinc-400 font-sans">
-                    Ready-Mix C35/45 — 32 m³ Pour for Raft Section 2
-                  </span>
-                </div>
-                <span className="text-emerald-500 dark:text-emerald-400 font-bold">Delivered (10:15 AM)</span>
+            {materials.length === 0 ? (
+              <p className="text-xs text-zinc-500">No materials recorded for this project.</p>
+            ) : (
+              <div className="space-y-2 text-xs font-mono">
+                {materials.map((m: any) => (
+                  <div
+                    key={m.id}
+                    className="flex items-center justify-between p-3 rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800"
+                  >
+                    <div>
+                      <span className="text-amber-500 font-bold block">{m.name}</span>
+                      <span className="text-zinc-600 dark:text-zinc-400 font-sans">
+                        Delivered {fmtNumber(m.total_delivered)} of {fmtNumber(m.total_ordered)} {m.unit} ordered · used{" "}
+                        {fmtNumber(m.total_used)} {m.unit}
+                      </span>
+                    </div>
+                    <span className="font-bold text-zinc-800 dark:text-zinc-200">
+                      Stock: {fmtNumber(m.stock_on_hand)} {m.unit}
+                    </span>
+                  </div>
+                ))}
               </div>
-              <div className="flex items-center justify-between p-3 rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800">
-                <div>
-                  <span className="text-amber-500 font-bold block">TMT Steel Rebar #884</span>
-                  <span className="text-zinc-600 dark:text-zinc-400 font-sans">
-                    Grade Fe500D 25mm — 40 MT Bundles
-                  </span>
-                </div>
-                <span className="text-emerald-500 dark:text-emerald-400 font-bold">Inspected & Stacked</span>
-              </div>
-            </div>
+            )}
           </Card>
         </TabsContent>
 

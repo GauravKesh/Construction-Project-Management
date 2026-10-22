@@ -27,7 +27,7 @@ export default function DevComponentsCatalog() {
 
       {/* Buttons */}
       <Card className="border-zinc-800 bg-zinc-900/60 p-5 space-y-4">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">
+        <h3 className="text-xs font-medium capitalize text-zinc-400">
           Buttons & Actions
         </h3>
         <div className="flex flex-wrap gap-3 items-center">
@@ -44,7 +44,7 @@ export default function DevComponentsCatalog() {
 
       {/* Badges & Severity */}
       <Card className="border-zinc-800 bg-zinc-900/60 p-5 space-y-4">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">
+        <h3 className="text-xs font-medium capitalize text-zinc-400">
           Severity & Status Badges
         </h3>
         <div className="flex flex-wrap gap-3 items-center">
@@ -63,7 +63,7 @@ export default function DevComponentsCatalog() {
 
       {/* Status Dots */}
       <Card className="border-zinc-800 bg-zinc-900/60 p-5 space-y-4">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">
+        <h3 className="text-xs font-medium capitalize text-zinc-400">
           Pulsing Status Indicators
         </h3>
         <div className="flex items-center gap-6 text-xs font-mono">
@@ -101,7 +101,7 @@ export default function DevComponentsCatalog() {
 
       {/* Form Controls */}
       <Card className="border-zinc-800 bg-zinc-900/60 p-5 space-y-4 max-w-lg">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">
+        <h3 className="text-xs font-medium capitalize text-zinc-400">
           Form Elements
         </h3>
         <div className="space-y-3">

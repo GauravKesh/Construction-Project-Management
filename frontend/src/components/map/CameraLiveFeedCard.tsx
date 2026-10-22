@@ -88,7 +88,7 @@ export function CameraLiveFeedCard({
         <div>
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-red-500 animate-ping" />
-            <span className="text-[10px] uppercase font-mono font-bold text-amber-500 tracking-wider">
+            <span className="text-xs capitalize font-medium text-amber-500">
               Live Edge CCTV Stream • YOLOv8 Active
             </span>
           </div>
@@ -179,13 +179,13 @@ export function CameraLiveFeedCard({
         {/* Real-time Computer Vision Metrics */}
         <div className="grid grid-cols-3 gap-2 text-center text-xs">
           <div className="p-2.5 rounded-lg bg-zinc-100 dark:bg-zinc-850/80 border border-zinc-200 dark:border-zinc-800">
-            <span className="text-[10px] text-zinc-500 uppercase font-mono block">Persons (last frame)</span>
+            <span className="text-xs text-zinc-500 capitalize block">Persons (last frame)</span>
             <span className="text-base font-black text-zinc-900 dark:text-zinc-50 font-mono">
               {fmtNumber(detection?.persons_count, 0)}
             </span>
           </div>
           <div className="p-2.5 rounded-lg bg-zinc-100 dark:bg-zinc-850/80 border border-zinc-200 dark:border-zinc-800">
-            <span className="text-[10px] text-zinc-500 uppercase font-mono block">Latest Frame</span>
+            <span className="text-xs text-zinc-500 capitalize block">Latest Frame</span>
             <span
               className={`text-base font-black font-mono ${
                 !detection ? "text-zinc-400" : detection.compliant ? "text-emerald-500" : "text-red-500"
@@ -199,7 +199,7 @@ export function CameraLiveFeedCard({
             </span>
           </div>
           <div className="p-2.5 rounded-lg bg-zinc-100 dark:bg-zinc-850/80 border border-zinc-200 dark:border-zinc-800">
-            <span className="text-[10px] text-zinc-500 uppercase font-mono block">Last CV Result</span>
+            <span className="text-xs text-zinc-500 capitalize block">Last CV Result</span>
             <span className="text-base font-black text-blue-500 font-mono">
               {detection ? new Date(detection.ts).toLocaleTimeString() : NO_DATA}
             </span>
@@ -212,7 +212,7 @@ export function CameraLiveFeedCard({
             <div className="flex items-center gap-2">
               <MapPin className="h-3.5 w-3.5 text-amber-500 shrink-0" />
               <div>
-                <span className="text-[10px] text-zinc-500 uppercase font-mono block">
+                <span className="text-xs text-zinc-500 capitalize block">
                   Stationed Geofence Zone
                 </span>
                 <span className="font-semibold text-zinc-900 dark:text-zinc-100">
@@ -236,10 +236,10 @@ export function CameraLiveFeedCard({
         {/* Live Safety Event Log */}
         <div className="space-y-1.5 pt-1">
           <div className="flex items-center justify-between text-[11px]">
-            <span className="font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider text-[10px]">
+            <span className="font-medium text-zinc-700 dark:text-zinc-300 capitalize text-xs">
               Live CV Safety Telemetry
             </span>
-            <Badge variant="success" className="text-[9px] font-mono uppercase">
+            <Badge variant="success" className="text-xs capitalize">
               Stream Synchronized
             </Badge>
           </div>

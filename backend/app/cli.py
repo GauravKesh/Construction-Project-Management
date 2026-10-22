@@ -112,38 +112,46 @@ async def run_video_handler():
 
     from sqlalchemy import select
     from app.db.models.camera import Camera
-    from app.ingestion.video_stream_handler import stream_manager
+    from app.ingestion.video_stream_handler import CameraSpec, stream_manager
 
     shutdown_event = asyncio.Event()
     _setup_signal_handlers(shutdown_event)
 
-    # Look up all active CV-enabled cameras in Postgres
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            select(Camera).where(Camera.status == "active", Camera.is_cv_enabled == True)
-        )
-        cameras = result.scalars().all()
-
-    if not cameras:
-        logger.info("No active CV cameras found in DB. Starting synthetic demo camera...")
-        await stream_manager.start_camera(
-            camera_id="cam-demo-01",
-            site_id="site-demo-01",
-            stream_url="mock://demo-camera-loop",
-            fps=settings.CV_SAMPLE_FPS,
-        )
-    else:
-        for cam in cameras:
-            logger.info(f"Starting camera stream for {cam.camera_code} ({cam.stream_url})")
-            await stream_manager.start_camera(
-                camera_id=str(cam.id),
-                site_id=str(cam.site_id),
-                stream_url=cam.stream_url,
-                fps=cam.fps or settings.CV_SAMPLE_FPS,
+    async def load_camera_specs():
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(
+                select(Camera).where(
+                    Camera.status.in_(["active", "streaming"]),
+                    Camera.is_cv_enabled.is_(True),
+                    Camera.deleted_at.is_(None),
+                )
             )
+            return [
+                CameraSpec(
+                    camera_id=str(cam.id),
+                    site_id=str(cam.site_id),
+                    stream_url=cam.stream_url,
+                    # Camera.fps can hold the source's native rate; never infer faster than the global cap
+                    fps=min(cam.fps or settings.CV_INFERENCE_FPS, settings.CV_INFERENCE_FPS),
+                )
+                for cam in result.scalars().all()
+            ]
 
-    logger.info("Video stream handler is running.")
-    await shutdown_event.wait()
+    async def sync_loop():
+        # Re-read the camera registry so cameras added, edited, started or stopped
+        # through the API are picked up without restarting this process.
+        while not shutdown_event.is_set():
+            try:
+                await stream_manager.sync(await load_camera_specs())
+            except Exception as e:
+                logger.error(f"Camera registry sync failed: {e}", exc_info=True)
+            try:
+                await asyncio.wait_for(shutdown_event.wait(), timeout=settings.CAMERA_SYNC_SECONDS)
+            except asyncio.TimeoutError:
+                pass
+
+    logger.info(f"Video stream handler running (camera registry sync every {settings.CAMERA_SYNC_SECONDS}s).")
+    await sync_loop()
 
     logger.info("Stopping all camera stream workers...")
     for cam_id in list(stream_manager._workers.keys()):

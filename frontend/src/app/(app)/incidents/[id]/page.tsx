@@ -134,7 +134,7 @@ export default function IncidentDetailPage() {
         <div className="lg:col-span-2 space-y-6">
           {/* Summary */}
           <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 p-5 space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <h3 className="text-xs font-medium capitalize text-zinc-500 dark:text-zinc-400">
               Hazard Observation & Description
             </h3>
             <p className="text-sm text-zinc-800 dark:text-zinc-200 leading-relaxed font-sans">
@@ -144,7 +144,7 @@ export default function IncidentDetailPage() {
 
           {/* Timeline & Remediations */}
           <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 p-5 space-y-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <h3 className="text-xs font-medium capitalize text-zinc-500 dark:text-zinc-400">
               Investigation & Remediation Log
             </h3>
             <div className="space-y-4">
@@ -192,7 +192,7 @@ export default function IncidentDetailPage() {
         {/* Right Column: Metadata & Attachments */}
         <div className="space-y-6">
           <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 p-5 space-y-4 text-xs">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <h3 className="text-xs font-medium capitalize text-zinc-500 dark:text-zinc-400">
               Ticket Attribution
             </h3>
             <div className="space-y-3 font-mono">
@@ -222,7 +222,7 @@ export default function IncidentDetailPage() {
 
           {/* Attachments Card */}
           <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 p-5 space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
+            <h3 className="text-xs font-medium capitalize text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
               <Paperclip className="h-3.5 w-3.5" />
               Evidence Attachments ({incident.attachments?.length ?? 0})
             </h3>

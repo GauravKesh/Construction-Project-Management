@@ -28,7 +28,7 @@ const FORECAST_METRICS = [
 function Stat({ label, value, note }: { label: string; value: string; note?: string }) {
   return (
     <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 p-5">
-      <span className="text-[10px] font-mono font-bold uppercase text-zinc-500 dark:text-zinc-400">{label}</span>
+      <span className="text-xs font-medium capitalize text-zinc-500 dark:text-zinc-400">{label}</span>
       <div className="font-mono text-3xl font-black text-zinc-900 dark:text-zinc-100 mt-2">{value}</div>
       {note && <span className="text-xs text-zinc-500 mt-1 block">{note}</span>}
     </Card>
@@ -168,7 +168,7 @@ export default function AnalyticsPage() {
           <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 p-5 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                <h3 className="text-sm font-medium capitalize text-zinc-500 dark:text-zinc-400">
                   Hourly rollups, last 7 days
                 </h3>
                 <span className="text-xs text-zinc-500">Only buckets with data are shown.</span>
@@ -193,7 +193,7 @@ export default function AnalyticsPage() {
             ) : (
               <div className="overflow-x-auto max-h-96">
                 <table className="w-full text-xs text-left font-mono">
-                  <thead className="bg-zinc-100 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 text-[10px] uppercase">
+                  <thead className="bg-zinc-100 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 text-xs capitalize">
                     <tr>
                       <th className="p-3">Bucket (local time)</th>
                       <th className="p-3">Series</th>
@@ -220,7 +220,7 @@ export default function AnalyticsPage() {
           <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 p-5 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
+                <h3 className="text-sm font-medium capitalize text-zinc-700 dark:text-zinc-300">
                   Linear-trend forecast
                 </h3>
                 <span className="text-xs text-zinc-500">
@@ -282,7 +282,7 @@ export default function AnalyticsPage() {
                 </div>
                 <div>
                   <span className="text-zinc-500 block">Trend (n={prediction.n_observations})</span>
-                  <Badge variant="outline" className="uppercase">
+                  <Badge variant="outline" className="capitalize">
                     {prediction.trend_direction}
                   </Badge>
                 </div>
@@ -294,7 +294,7 @@ export default function AnalyticsPage() {
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-amber-500" />
               <div>
-                <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
+                <h3 className="text-sm font-medium capitalize text-zinc-700 dark:text-zinc-300">
                   Zone risk (heuristic)
                 </h3>
                 <span className="text-xs text-zinc-500">
@@ -338,7 +338,7 @@ export default function AnalyticsPage() {
         {/* Reports: generated server-side from the same KPIs */}
         <TabsContent value="reports" className="space-y-4">
           <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 max-w-xl p-5 space-y-4 text-xs">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
+            <h3 className="text-sm font-medium capitalize text-zinc-600 dark:text-zinc-400">
               Export KPI Report
             </h3>
 
@@ -364,7 +364,7 @@ export default function AnalyticsPage() {
                     variant={reportFormat === f ? "amber" : "outline"}
                     size="sm"
                     onClick={() => setReportFormat(f)}
-                    className="font-bold uppercase font-mono"
+                    className="font-medium capitalize"
                   >
                     {f}
                   </Button>

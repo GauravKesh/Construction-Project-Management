@@ -145,7 +145,7 @@ export default function AdminPage() {
             <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-xs text-left">
-                  <thead className="bg-zinc-100 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 font-mono text-[10px] uppercase">
+                  <thead className="bg-zinc-100 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 text-xs capitalize">
                     <tr>
                       <th className="p-3">User</th>
                       <th className="p-3">Email</th>
@@ -159,7 +159,7 @@ export default function AdminPage() {
                         <td className="p-3 font-semibold text-zinc-900 dark:text-zinc-100">{u.full_name}</td>
                         <td className="p-3 font-mono text-zinc-600 dark:text-zinc-400">{u.email}</td>
                         <td className="p-3">
-                          <Badge variant="outline" className="font-mono uppercase text-[10px] text-amber-600 dark:text-amber-400 border-amber-500/30">
+                          <Badge variant="outline" className="capitalize text-xs text-amber-600 dark:text-amber-400 border-amber-500/30">
                             {u.role.replace("_", " ")}
                           </Badge>
                         </td>
@@ -179,7 +179,7 @@ export default function AdminPage() {
             <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-xs text-left font-mono">
-                  <thead className="bg-zinc-100 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 text-[10px] uppercase">
+                  <thead className="bg-zinc-100 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 text-xs capitalize">
                     <tr>
                       <th className="p-3">Timestamp</th>
                       <th className="p-3">User</th>
@@ -238,8 +238,7 @@ export default function AdminPage() {
                       </div>
                       <Badge
                         variant="outline"
-                        className={`text-[9px] uppercase font-mono ${
-                          dep?.status === "healthy"
+                        className={`text-xs capitalize ${ dep?.status ==="healthy"
                             ? "text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
                             : "text-red-600 dark:text-red-400 border-red-500/30"
                         }`}

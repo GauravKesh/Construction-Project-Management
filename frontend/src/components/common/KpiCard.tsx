@@ -1,6 +1,6 @@
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { TrendingUp, TrendingDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface KpiCardProps {
@@ -67,7 +67,7 @@ export function KpiCard({
         "border-amber-500/40": status === "warning",
       })}
     >
-      <CardContent className="p-5">
+      <CardContent className="p-4 sm:p-5">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">{title}</span>
           {icon && <span className="text-zinc-400">{icon}</span>}
@@ -75,7 +75,7 @@ export function KpiCard({
 
         <div className="mt-2 flex items-baseline justify-between">
           <div className="flex items-baseline gap-1.5">
-            <span className="text-3xl font-semibold tracking-tight tabular-nums text-zinc-900 dark:text-zinc-50">
+            <span className="text-2xl sm:text-3xl font-semibold tracking-tight tabular-nums text-zinc-900 dark:text-zinc-50">
               {value}
             </span>
             {unit && (

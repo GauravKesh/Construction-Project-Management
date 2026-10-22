@@ -2,7 +2,9 @@ import logging
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Tuple
+from app.core.config import settings
 from app.core.metrics import CV_INFERENCE_FPS
+from app.db.redis import get_redis_client
 from app.cv.detector import cv_detector
 from app.db.models.alert import Alert, AlertStatus, AlertSeverity
 from app.db.postgres import AsyncSessionLocal
@@ -18,6 +20,17 @@ class CVService:
     def __init__(self):
         self.cv_repo = CVRepository()
         self.storage = get_storage()
+
+    async def _claim_alert_slot(self, camera_id: str) -> bool:
+        cooldown = settings.PPE_ALERT_COOLDOWN_SECONDS
+        if cooldown <= 0:
+            return True
+        try:
+            r = get_redis_client()
+            return bool(await r.set(f"dedup:ppe:{camera_id}", "1", nx=True, ex=cooldown))
+        except Exception as e:
+            logger.warning(f"PPE alert cooldown check failed, raising alert anyway: {e}")
+            return True
 
     async def process_frame(
         self,
@@ -87,8 +100,8 @@ class CVService:
             detector=detector,
         )
 
-        # If PPE violation, create Alert and Outbox event
-        if not compliant:
+        # If PPE violation, create Alert and Outbox event (at most one per camera per cooldown)
+        if not compliant and await self._claim_alert_slot(camera_id):
             async with AsyncSessionLocal() as session:
                 try:
                     alert_repo = AlertRepository(session)

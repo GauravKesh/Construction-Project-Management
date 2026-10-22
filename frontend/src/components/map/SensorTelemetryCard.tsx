@@ -69,7 +69,7 @@ export function SensorTelemetryCard({
         <div>
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-blue-500 animate-ping" />
-            <span className="text-[10px] uppercase font-mono font-bold text-blue-500 tracking-wider">
+            <span className="text-xs capitalize font-medium text-blue-500">
               IoT Real-Time Telemetry Node
             </span>
           </div>
@@ -92,7 +92,7 @@ export function SensorTelemetryCard({
         {/* Large Primary Readout */}
         <div className="p-4 rounded-xl bg-gradient-to-br from-blue-500/10 via-zinc-50 to-white dark:from-blue-950/30 dark:via-zinc-900 dark:to-zinc-900 border border-blue-500/30 flex items-center justify-between">
           <div>
-            <span className="text-[10px] font-mono uppercase text-zinc-500 block">
+            <span className="text-xs capitalize text-zinc-500 block">
               Current Live Value
             </span>
             <div className="flex items-baseline gap-2 mt-0.5">
@@ -112,7 +112,7 @@ export function SensorTelemetryCard({
           <div className="flex flex-col items-end gap-1.5">
             <Badge
               variant={isCritical ? "destructive" : isHigh ? "warning" : hasEnvelope ? "success" : "outline"}
-              className="text-[10px] font-mono uppercase px-2 py-0.5"
+              className="text-xs capitalize px-2 py-0.5"
             >
               {!hasEnvelope || liveValue === null
                 ? "NO THRESHOLDS"
@@ -155,7 +155,7 @@ export function SensorTelemetryCard({
               <Gauge className="h-3 w-3 text-blue-500" />
               Recent readings ({history.length})
             </span>
-            <span className="text-zinc-500 font-bold uppercase">{live ? "Live" : "Idle"}</span>
+            <span className="text-zinc-500 font-medium capitalize">{live ? "Live" : "Idle"}</span>
           </div>
           <div className="h-[70px] w-full flex items-center justify-center">
             <svg viewBox={`0 0 ${sparkWidth} ${sparkHeight}`} className="w-full h-full overflow-visible">
@@ -226,7 +226,7 @@ export function SensorTelemetryCard({
             <div className="flex items-center gap-2">
               <MapPin className="h-3.5 w-3.5 text-blue-500 shrink-0" />
               <div>
-                <span className="text-[10px] text-zinc-500 uppercase font-mono block">
+                <span className="text-xs text-zinc-500 capitalize block">
                   Stationed Geofence Zone
                 </span>
                 <span className="font-semibold text-zinc-900 dark:text-zinc-100">

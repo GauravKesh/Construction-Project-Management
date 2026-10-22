@@ -4,6 +4,22 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 
+class SensorConnectionInfo(BaseModel):
+    sensor_id: uuid.UUID
+    sensor_code: str
+    site_id: uuid.UUID
+    sensor_type: str
+    unit: str
+    mqtt_host: str
+    mqtt_port: int
+    mqtt_topic: str
+    mqtt_requires_auth: bool
+    http_ingest_url: str
+    http_requires_api_key: bool
+    example_payload: Dict[str, Any]
+    last_seen_at: Optional[datetime] = None
+
+
 class SensorCreate(BaseModel):
     sensor_code: str
     name: str

@@ -48,7 +48,10 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
 
     try {
       const errJson = await response.json();
-      errorMessage = errJson.detail || errJson.error || errJson.message || errorMessage;
+      // Backend errors are {"error": {"code", "message"}}; FastAPI defaults use {"detail": ...}
+      const detail = typeof errJson.detail === "string" ? errJson.detail : undefined;
+      const nested = typeof errJson.error === "object" ? errJson.error?.message : errJson.error;
+      errorMessage = detail || nested || errJson.message || errorMessage;
       details = errJson;
     } catch {
       errorMessage = response.statusText || errorMessage;

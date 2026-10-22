@@ -228,7 +228,7 @@ export default function IncidentsPage() {
       {/* KPI Summary Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 p-3.5">
-          <span className="text-[10px] font-mono font-bold uppercase text-zinc-500 dark:text-zinc-400">
+          <span className="text-xs font-medium capitalize text-zinc-500 dark:text-zinc-400">
             Total Tickets
           </span>
           <div className="text-xl sm:text-2xl font-black font-mono text-zinc-900 dark:text-zinc-50 mt-1">
@@ -238,7 +238,7 @@ export default function IncidentsPage() {
         </Card>
 
         <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 p-3.5">
-          <span className="text-[10px] font-mono font-bold uppercase text-amber-600 dark:text-amber-400">
+          <span className="text-xs font-medium capitalize text-amber-600 dark:text-amber-400">
             Open / Reported
           </span>
           <div className="text-xl sm:text-2xl font-black font-mono text-amber-500 mt-1">
@@ -248,7 +248,7 @@ export default function IncidentsPage() {
         </Card>
 
         <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 p-3.5">
-          <span className="text-[10px] font-mono font-bold uppercase text-sky-600 dark:text-sky-400">
+          <span className="text-xs font-medium capitalize text-sky-600 dark:text-sky-400">
             In Investigation
           </span>
           <div className="text-xl sm:text-2xl font-black font-mono text-sky-500 mt-1">
@@ -258,7 +258,7 @@ export default function IncidentsPage() {
         </Card>
 
         <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 p-3.5">
-          <span className="text-[10px] font-mono font-bold uppercase text-emerald-600 dark:text-emerald-400">
+          <span className="text-xs font-medium capitalize text-emerald-600 dark:text-emerald-400">
             Resolved / Closed
           </span>
           <div className="text-xl sm:text-2xl font-black font-mono text-emerald-500 mt-1">
@@ -268,7 +268,7 @@ export default function IncidentsPage() {
         </Card>
 
         <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 p-3.5 col-span-2 sm:col-span-1">
-          <span className="text-[10px] font-mono font-bold uppercase text-rose-600 dark:text-rose-400">
+          <span className="text-xs font-medium capitalize text-rose-600 dark:text-rose-400">
             Critical / High
           </span>
           <div className="text-xl sm:text-2xl font-black font-mono text-rose-500 mt-1">
@@ -323,7 +323,7 @@ export default function IncidentsPage() {
                 variant={severityFilter === sev ? "amber" : "outline"}
                 size="sm"
                 onClick={() => setSeverityFilter(sev)}
-                className="h-8 px-2.5 text-xs uppercase font-mono border-zinc-200 dark:border-zinc-800"
+                className="h-8 px-2.5 text-xs capitalize border-zinc-200 dark:border-zinc-800"
               >
                 {sev}
               </Button>
@@ -432,7 +432,7 @@ export default function IncidentsPage() {
         <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-xs text-left">
-              <thead className="bg-zinc-100 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 font-mono uppercase text-[10px]">
+              <thead className="bg-zinc-100 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 capitalize text-xs">
                 <tr>
                   <th className="p-3">Ticket ID</th>
                   <th className="p-3">Title & Summary</th>
@@ -552,7 +552,7 @@ export default function IncidentsPage() {
                       variant={newSeverity === s ? "amber" : "outline"}
                       size="sm"
                       onClick={() => setNewSeverity(s)}
-                      className="h-8 text-xs uppercase font-mono border-zinc-300 dark:border-zinc-700"
+                      className="h-8 text-xs capitalize border-zinc-300 dark:border-zinc-700"
                     >
                       {s}
                     </Button>

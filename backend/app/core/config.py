@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import List, Literal, Optional
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -90,6 +91,10 @@ class Settings(BaseSettings):
     MQTT_PASSWORD: Optional[str] = None
     MQTT_TOPIC_SUB: str = "sites/+/sensors/#"
     MQTT_KEEPALIVE: int = 60
+    # Addresses that field devices should use (the server itself may reach the broker
+    # via "localhost"); shown in the UI's device connection instructions.
+    MQTT_PUBLIC_HOST: Optional[str] = None
+    PUBLIC_API_BASE_URL: Optional[str] = None
 
     # Storage Abstraction
     STORAGE_BACKEND: Literal["local", "s3"] = "local"
@@ -108,6 +113,21 @@ class Settings(BaseSettings):
     CV_MODEL_PATH: str = "./data/models/yolov8n.pt"
     CV_CONFIDENCE_THRESHOLD: float = 0.45
     CV_INFERENCE_FPS: int = 2
+    # Where camera URLs of the form "/videos/<file>" are found on disk (the browser
+    # serves the same files via frontend/public/videos). Defaults to <repo>/videos.
+    LOCAL_VIDEO_DIR: Optional[str] = None
+    # Minimum seconds between PPE-violation alerts from the same camera. Every frame's
+    # detection is still recorded; this only stops one ongoing violation raising an
+    # alert per frame.
+    PPE_ALERT_COOLDOWN_SECONDS: int = 300
+    # How often the video handler re-reads the camera registry to start/stop workers
+    CAMERA_SYNC_SECONDS: int = 10
+
+    @property
+    def local_video_dir(self) -> Path:
+        if self.LOCAL_VIDEO_DIR:
+            return Path(self.LOCAL_VIDEO_DIR).expanduser().resolve()
+        return Path(__file__).resolve().parents[3] / "videos"
 
     # Shared secret for device ingestion over HTTP (X-API-Key on /telemetry/ingest).
     # Unset = only authenticated users may ingest over HTTP.

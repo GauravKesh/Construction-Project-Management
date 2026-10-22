@@ -51,6 +51,20 @@ class CameraStatusResponse(BaseModel):
     is_cv_enabled: bool
     last_frame_at: Optional[datetime] = None
     stream_active: bool
+    last_error: Optional[str] = None
+
+
+class CameraConnectionTestRequest(BaseModel):
+    stream_url: str = Field(min_length=1, max_length=2048)
+
+
+class CameraConnectionTestResponse(BaseModel):
+    ok: bool
+    width: Optional[int] = None
+    height: Optional[int] = None
+    fps: Optional[float] = None
+    error: Optional[str] = None
+    elapsed_ms: Optional[int] = None
 
 
 class CVConfigUpdate(BaseModel):

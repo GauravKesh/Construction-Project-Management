@@ -832,7 +832,7 @@ export default function ProjectDetailPage() {
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-6 border-b border-zinc-200 dark:border-zinc-800">
         <div className="space-y-1.5">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-mono text-xs font-bold text-amber-500 uppercase tracking-wider">
+            <span className="text-xs font-medium text-amber-500 capitalize">
               {project.code || "PRJ-CODE"}
             </span>
             <Badge variant="outline" className="font-mono text-[10px] text-emerald-500 border-emerald-500/30 gap-1">
@@ -840,7 +840,7 @@ export default function ProjectDetailPage() {
               {project.status ? project.status.toUpperCase() : "ACTIVE STAGE"}
             </Badge>
             {isActiveWorkingProject ? (
-              <Badge variant="warning" className="text-[10px] font-mono uppercase font-bold py-0.5">
+              <Badge variant="warning" className="text-xs capitalize font-medium py-0.5">
                 Active Working Context
               </Badge>
             ) : (
@@ -908,7 +908,7 @@ export default function ProjectDetailPage() {
       {/* KPI Overview Ribbon */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 p-4">
-          <span className="text-[10px] uppercase font-mono font-bold text-zinc-500 dark:text-zinc-400">
+          <span className="text-xs capitalize font-medium text-zinc-500 dark:text-zinc-400">
             Overall Completion
           </span>
           <div className="font-mono text-2xl font-black text-amber-500 mt-1 flex items-baseline gap-2">
@@ -921,7 +921,7 @@ export default function ProjectDetailPage() {
         </Card>
 
         <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 p-4">
-          <span className="text-[10px] uppercase font-mono font-bold text-zinc-500 dark:text-zinc-400">
+          <span className="text-xs capitalize font-medium text-zinc-500 dark:text-zinc-400">
             Active Construction Phase
           </span>
           <div className="font-mono text-lg font-black text-sky-500 dark:text-sky-400 mt-1 truncate">
@@ -933,7 +933,7 @@ export default function ProjectDetailPage() {
         </Card>
 
         <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 p-4">
-          <span className="text-[10px] uppercase font-mono font-bold text-zinc-500 dark:text-zinc-400">
+          <span className="text-xs capitalize font-medium text-zinc-500 dark:text-zinc-400">
             Work Packages Tracked
           </span>
           <div className="font-mono text-2xl font-black text-zinc-900 dark:text-zinc-100 mt-1">
@@ -943,7 +943,7 @@ export default function ProjectDetailPage() {
         </Card>
 
         <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 p-4">
-          <span className="text-[10px] uppercase font-mono font-bold text-zinc-500 dark:text-zinc-400">
+          <span className="text-xs capitalize font-medium text-zinc-500 dark:text-zinc-400">
             Total Capital Allocation
           </span>
           <div className="font-mono text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
@@ -1073,7 +1073,7 @@ export default function ProjectDetailPage() {
                       <span>{p.tag}</span>
                       <span className="text-[10px] opacity-70">({count})</span>
                       {p.isCustom && (
-                        <span className="text-[8px] bg-purple-500/20 text-purple-400 px-1 py-0.2 rounded font-sans uppercase">
+                        <span className="text-[8px] bg-purple-500/20 text-purple-400 px-1 py-0.2 rounded font-sans capitalize">
                           Custom
                         </span>
                       )}
@@ -1120,8 +1120,7 @@ export default function ProjectDetailPage() {
                               )}
                               <Badge
                                 variant="outline"
-                                className={`text-[10px] font-mono uppercase ${
-                                  phase.status === "completed"
+                                className={`text-xs capitalize ${ phase.status ==="completed"
                                     ? "text-emerald-500 border-emerald-500/30"
                                     : phase.status === "in_progress"
                                     ? "text-sky-500 border-sky-500/30"
@@ -1203,7 +1202,7 @@ export default function ProjectDetailPage() {
                                       {task.task_name}
                                     </h5>
                                     {isCritical && (
-                                      <Badge variant="destructive" className="text-[9px] uppercase font-mono">
+                                      <Badge variant="destructive" className="text-xs capitalize">
                                         Critical Path
                                       </Badge>
                                     )}
@@ -1412,7 +1411,7 @@ export default function ProjectDetailPage() {
         <TabsContent value="sites" className="space-y-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
-              <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+              <h3 className="text-sm font-medium capitalize text-zinc-500 dark:text-zinc-400">
                 Registered Site Sectors & Geographic Boundaries
               </h3>
               <p className="text-xs text-zinc-500">
@@ -1438,10 +1437,10 @@ export default function ProjectDetailPage() {
               >
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="font-mono text-xs font-bold text-amber-500 uppercase">
+                    <span className="text-xs font-medium text-amber-500 capitalize">
                       {site.code || "SITE-SEC"}
                     </span>
-                    <Badge variant="outline" className="text-[9px] font-mono uppercase text-emerald-500 border-emerald-500/30">
+                    <Badge variant="outline" className="text-xs capitalize text-emerald-500 border-emerald-500/30">
                       {site.status || "active"}
                     </Badge>
                   </div>
@@ -1490,7 +1489,7 @@ export default function ProjectDetailPage() {
           <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 overflow-hidden">
             <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
               <div>
-                <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                <h3 className="text-sm font-medium capitalize text-zinc-500 dark:text-zinc-400">
                   Bill of Quantities Variance Tracking
                 </h3>
                 <span className="text-xs text-zinc-500">
@@ -1521,7 +1520,7 @@ export default function ProjectDetailPage() {
 
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-left">
-                <thead className="bg-zinc-100 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 font-mono text-[10px] uppercase">
+                <thead className="bg-zinc-100 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 text-xs capitalize">
                   <tr>
                     <th className="p-3">CSI Code</th>
                     <th className="p-3">Description</th>
@@ -1576,7 +1575,7 @@ export default function ProjectDetailPage() {
         {/* Tab 4: Manpower */}
         <TabsContent value="manpower" className="space-y-4">
           <div className="flex justify-between items-center">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <h3 className="text-sm font-medium capitalize text-zinc-500 dark:text-zinc-400">
               Site Workforce & Subcontractor Headcount
             </h3>
             <Button
@@ -1592,7 +1591,7 @@ export default function ProjectDetailPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 p-5">
-              <span className="text-[10px] uppercase font-mono font-bold text-zinc-500 dark:text-zinc-400">
+              <span className="text-xs capitalize font-medium text-zinc-500 dark:text-zinc-400">
                 Actual Headcount Today
               </span>
               <div className="font-mono text-3xl font-black text-amber-500 mt-2">
@@ -1602,7 +1601,7 @@ export default function ProjectDetailPage() {
             </Card>
 
             <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 p-5">
-              <span className="text-[10px] uppercase font-mono font-bold text-zinc-500 dark:text-zinc-400">
+              <span className="text-xs capitalize font-medium text-zinc-500 dark:text-zinc-400">
                 Trades Logged Today
               </span>
               <div className="font-mono text-3xl font-black text-zinc-900 dark:text-zinc-100 mt-2">
@@ -1612,7 +1611,7 @@ export default function ProjectDetailPage() {
             </Card>
 
             <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 p-5">
-              <span className="text-[10px] uppercase font-mono font-bold text-zinc-500 dark:text-zinc-400">
+              <span className="text-xs capitalize font-medium text-zinc-500 dark:text-zinc-400">
                 Plan Attainment
               </span>
               <div className="font-mono text-3xl font-black text-emerald-500 dark:text-emerald-400 mt-2">
@@ -1626,7 +1625,7 @@ export default function ProjectDetailPage() {
         {/* Tab 5: Materials */}
         <TabsContent value="materials" className="space-y-4">
           <div className="flex justify-between items-center">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <h3 className="text-sm font-medium capitalize text-zinc-500 dark:text-zinc-400">
               Bulk Materials & Supply Chain Receipts
             </h3>
             <Button
@@ -1641,7 +1640,7 @@ export default function ProjectDetailPage() {
           </div>
 
           <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 p-5 space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <h3 className="text-xs font-medium capitalize text-zinc-500 dark:text-zinc-400">
               Materials Register Summary
             </h3>
             {materials.length === 0 ? (
@@ -1673,7 +1672,7 @@ export default function ProjectDetailPage() {
         {/* Tab 6: Drawings */}
         <TabsContent value="drawings" className="space-y-4">
           <div className="flex justify-between items-center">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <h3 className="text-sm font-medium capitalize text-zinc-500 dark:text-zinc-400">
               Approved Construction Drawings & BIM Models
             </h3>
             <Button
@@ -2005,7 +2004,7 @@ export default function ProjectDetailPage() {
                 <Input
                   value={editCode}
                   onChange={(e) => setEditCode(e.target.value)}
-                  className="bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 font-mono text-xs uppercase"
+                  className="bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-xs capitalize"
                 />
               </div>
               <div className="space-y-1">
@@ -2132,7 +2131,7 @@ export default function ProjectDetailPage() {
                   value={newSiteCode}
                   onChange={(e) => setNewSiteCode(e.target.value)}
                   placeholder="SITE-NC-01"
-                  className="bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 font-mono text-xs uppercase"
+                  className="bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-xs capitalize"
                 />
               </div>
               <div className="space-y-1">

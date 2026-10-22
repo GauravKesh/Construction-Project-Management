@@ -31,6 +31,8 @@ import {
   NormalizedSiteMap,
 } from "@/lib/mapUtils";
 import { CameraLiveFeedCard } from "@/components/map/CameraLiveFeedCard";
+import { AddDevicePanel, DeviceConnectionPanel, DeviceKind } from "@/components/map/AddDevicePanel";
+import { useCan } from "@/stores/authStore";
 import { SensorTelemetryCard } from "@/components/map/SensorTelemetryCard";
 import { toast } from "sonner";
 import { NO_DATA, fmtNumber } from "@/lib/format";
@@ -46,6 +48,15 @@ const SiteMapLeaflet = dynamic(() => import("@/components/map/SiteMapLeaflet"), 
   ),
 });
 
+function zoneCenter(zone: ParsedZone): [number, number] {
+  const pts = zone.coordinates.slice();
+  // GeoJSON rings repeat the first vertex at the end
+  if (pts.length > 1 && pts[0][0] === pts[pts.length - 1][0] && pts[0][1] === pts[pts.length - 1][1]) pts.pop();
+  const lat = pts.reduce((sum, p) => sum + p[0], 0) / pts.length;
+  const lng = pts.reduce((sum, p) => sum + p[1], 0) / pts.length;
+  return [lat, lng];
+}
+
 export default function SiteMapPage() {
   const queryClient = useQueryClient();
   const activeSiteId = useProjectStore((s) => s.activeSiteId);
@@ -55,6 +66,39 @@ export default function SiteMapPage() {
   const [isCreatingZone, setIsCreatingZone] = useState(false);
   const [currentDrawnPoints, setCurrentDrawnPoints] = useState<[number, number][]>([]);
   const [activeTab, setActiveTab] = useState<"zones" | "cameras" | "sensors">("zones");
+
+  // Device placement: pick a point on the map, then register the device there
+  const [placing, setPlacing] = useState<DeviceKind | null>(null);
+  const [pendingPoint, setPendingPoint] = useState<[number, number] | null>(null);
+  const [placementZoneId, setPlacementZoneId] = useState<string | undefined>(undefined);
+  const [connectionFor, setConnectionFor] = useState<{ kind: DeviceKind; id: string } | null>(null);
+  // Mirrors the backend role checks on POST /sites/{id}/sensors and /cameras
+  const canAddSensor = useCan(["admin", "project_manager", "site_engineer"]);
+  const canAddCamera = useCan(["admin", "project_manager", "safety_officer"]);
+  const sidePanelBusy = isCreatingZone || placing !== null || connectionFor !== null;
+
+  const clearSelection = () => {
+    setSelectedZone(null);
+    setSelectedCamera(null);
+    setSelectedSensor(null);
+  };
+
+  const startPlacing = (kind: DeviceKind, zone?: ParsedZone) => {
+    setIsCreatingZone(false);
+    setCurrentDrawnPoints([]);
+    setConnectionFor(null);
+    clearSelection();
+    // From a zone: start at its centre with the zone preselected (click the map to adjust)
+    setPendingPoint(zone ? zoneCenter(zone) : null);
+    setPlacementZoneId(zone?.id);
+    setPlacing(kind);
+  };
+
+  const stopPlacing = () => {
+    setPlacing(null);
+    setPendingPoint(null);
+    setPlacementZoneId(undefined);
+  };
 
   // New zone form state
   const [newZoneName, setNewZoneName] = useState("");
@@ -183,40 +227,64 @@ export default function SiteMapPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Interactive Site Map & GIS Geofencing"
-        description="High-precision geospatial map with polygon exclusion zones, real-time sensor node anchors, and camera orientations."
+        title="Site Map"
+        description="Zones, sensors and cameras for the selected site. Add a device by placing it on the map."
       >
-        <div className="flex items-center gap-2">
-          {isCreatingZone ? (
+        {isCreatingZone ? (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setIsCreatingZone(false);
+              setCurrentDrawnPoints([]);
+            }}
+            className="gap-1.5"
+          >
+            <X className="h-3.5 w-3.5" />
+            Cancel drawing
+          </Button>
+        ) : (
+          <>
+            {canAddSensor && (
+              <Button
+                variant={placing === "sensor" ? "amber" : "outline"}
+                size="sm"
+                onClick={() => (placing === "sensor" ? stopPlacing() : startPlacing("sensor"))}
+                className="gap-1.5"
+                disabled={!activeSiteId}
+              >
+                <Radio className="h-3.5 w-3.5" />
+                Add sensor
+              </Button>
+            )}
+            {canAddCamera && (
+              <Button
+                variant={placing === "camera" ? "amber" : "outline"}
+                size="sm"
+                onClick={() => (placing === "camera" ? stopPlacing() : startPlacing("camera"))}
+                className="gap-1.5"
+                disabled={!activeSiteId}
+              >
+                <Video className="h-3.5 w-3.5" />
+                Add camera
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
               onClick={() => {
-                setIsCreatingZone(false);
-                setCurrentDrawnPoints([]);
-              }}
-              className="gap-1.5 text-xs text-zinc-400 hover:text-white"
-            >
-              <X className="h-3.5 w-3.5" />
-              Cancel Drawing
-            </Button>
-          ) : (
-            <Button
-              variant="amber"
-              size="sm"
-              onClick={() => {
+                stopPlacing();
+                setConnectionFor(null);
                 setIsCreatingZone(true);
-                setSelectedZone(null);
-                setSelectedCamera(null);
-                setSelectedSensor(null);
+                clearSelection();
               }}
-              className="gap-1.5 font-bold"
+              className="gap-1.5"
             >
               <Plus className="h-3.5 w-3.5" />
-              Add Geofence Zone
+              Add zone
             </Button>
-          )}
-        </div>
+          </>
+        )}
       </PageHeader>
 
       {/* Drawing Instructions Banner when active */}
@@ -225,7 +293,7 @@ export default function SiteMapPage() {
           <div className="flex items-center gap-3">
             <span className="h-2.5 w-2.5 rounded-full bg-amber-500 animate-ping" />
             <div className="text-zinc-900 dark:text-zinc-100 font-sans">
-              <span className="font-bold text-amber-500 uppercase tracking-wider text-[11px] mr-2">
+              <span className="font-medium text-amber-500 capitalize text-[11px] mr-2">
                 Drawing Mode Active:
               </span>
               Click anywhere on the map surface to place polygon vertices. 
@@ -273,11 +341,14 @@ export default function SiteMapPage() {
             }}
             isDrawingMode={isCreatingZone}
             onDrawingPointsChange={setCurrentDrawnPoints}
+            placementMode={placing}
+            onPlace={setPendingPoint}
+            pendingPoint={pendingPoint}
           />
 
           {/* Map floating legend - Elevated above Leaflet tiles */}
           <div className="absolute bottom-4 left-4 z-[1001] p-2.5 rounded-lg bg-white/95 dark:bg-zinc-950/90 border border-zinc-200 dark:border-zinc-800/80 backdrop-blur-md text-[11px] space-y-1.5 shadow-xl pointer-events-auto">
-            <span className="font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider text-[10px] block">
+            <span className="font-medium text-zinc-700 dark:text-zinc-300 capitalize text-xs block">
               Layer Legend
             </span>
             <div className="flex items-center gap-2">
@@ -303,12 +374,39 @@ export default function SiteMapPage() {
 
         {/* Right: Connected Inspector / Directory Sidebar */}
         <div className="lg:col-span-1 h-full overflow-y-auto space-y-4">
+          {/* Device placement / registration */}
+          {placing && activeSiteId && (
+            <AddDevicePanel
+              key={placing}
+              kind={placing}
+              siteId={activeSiteId}
+              point={pendingPoint}
+              zones={normalizedMap.zones}
+              initialZoneId={placementZoneId}
+              onCancel={stopPlacing}
+              onCreated={(kind, id) => {
+                stopPlacing();
+                setConnectionFor({ kind, id });
+              }}
+            />
+          )}
+
+          {/* How to connect a registered device, with live arrival check */}
+          {!placing && connectionFor && (
+            <DeviceConnectionPanel
+              key={connectionFor.id}
+              kind={connectionFor.kind}
+              id={connectionFor.id}
+              onClose={() => setConnectionFor(null)}
+            />
+          )}
+
           {/* 1. Zone Creation Mode */}
           {isCreatingZone && (
             <Card className="border-amber-500/50 bg-white dark:bg-zinc-900/90 shadow-xl">
               <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between">
                 <div>
-                  <CardTitle className="text-xs font-bold uppercase tracking-wider text-amber-500 flex items-center gap-1.5">
+                  <CardTitle className="text-xs font-medium capitalize text-amber-500 flex items-center gap-1.5">
                     <Crosshair className="h-3.5 w-3.5" />
                     New Geofence Polygon
                   </CardTitle>
@@ -348,7 +446,7 @@ export default function SiteMapPage() {
                         variant={newZoneType === t ? "amber" : "outline"}
                         size="sm"
                         onClick={() => setNewZoneType(t)}
-                        className="h-7 text-[10px] uppercase font-mono"
+                        className="h-7 text-xs capitalize"
                       >
                         {t}
                       </Button>
@@ -402,7 +500,7 @@ export default function SiteMapPage() {
           )}
 
           {/* 2. Live Camera Stream & AI Analysis Inspector */}
-          {!isCreatingZone && selectedCamera && (
+          {!sidePanelBusy && selectedCamera && (
             <CameraLiveFeedCard
               camera={selectedCamera}
               zone={normalizedMap.zones.find((z) => z.id === selectedCamera.zone_id)}
@@ -416,9 +514,19 @@ export default function SiteMapPage() {
               onClose={() => setSelectedCamera(null)}
             />
           )}
+          {!sidePanelBusy && selectedCamera && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full gap-1.5"
+              onClick={() => setConnectionFor({ kind: "camera", id: selectedCamera.id })}
+            >
+              Connection status
+            </Button>
+          )}
 
           {/* 3. Live IoT Sensor Telemetry Inspector */}
-          {!isCreatingZone && selectedSensor && (
+          {!sidePanelBusy && selectedSensor && (
             <SensorTelemetryCard
               sensor={selectedSensor}
               zone={normalizedMap.zones.find((z) => z.id === selectedSensor.zone_id)}
@@ -432,13 +540,23 @@ export default function SiteMapPage() {
               onClose={() => setSelectedSensor(null)}
             />
           )}
+          {!sidePanelBusy && selectedSensor && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full gap-1.5"
+              onClick={() => setConnectionFor({ kind: "sensor", id: selectedSensor.id })}
+            >
+              How to connect this sensor
+            </Button>
+          )}
 
           {/* 4. Connected Zone Details Card */}
-          {!isCreatingZone && !selectedCamera && !selectedSensor && selectedZone && (
+          {!sidePanelBusy && !selectedCamera && !selectedSensor && selectedZone && (
             <Card className="border-zinc-200 dark:border-zinc-800 shadow-md">
               <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between">
                 <div>
-                  <span className="text-[10px] uppercase font-mono font-bold text-amber-500">
+                  <span className="text-xs capitalize font-medium text-amber-500">
                     Geofence Sector Inspector
                   </span>
                   <CardTitle className="text-sm font-bold text-zinc-900 dark:text-zinc-50">
@@ -453,6 +571,22 @@ export default function SiteMapPage() {
                 </button>
               </CardHeader>
               <CardContent className="p-4 pt-0 space-y-3.5 text-xs">
+                {(canAddSensor || canAddCamera) && (
+                  <div className="grid grid-cols-2 gap-2">
+                    {canAddSensor && (
+                      <Button variant="outline" size="sm" className="gap-1.5" onClick={() => startPlacing("sensor", selectedZone)}>
+                        <Radio className="h-3.5 w-3.5" />
+                        Add sensor here
+                      </Button>
+                    )}
+                    {canAddCamera && (
+                      <Button variant="outline" size="sm" className="gap-1.5" onClick={() => startPlacing("camera", selectedZone)}>
+                        <Video className="h-3.5 w-3.5" />
+                        Add camera here
+                      </Button>
+                    )}
+                  </div>
+                )}
                 {/* Zone Safety Specs */}
                 <div className="p-3 rounded-lg bg-zinc-100/70 dark:bg-zinc-850 space-y-1.5 font-sans">
                   <div className="flex justify-between items-center">
@@ -465,14 +599,14 @@ export default function SiteMapPage() {
                           ? "success"
                           : "warning"
                       }
-                      className="uppercase font-mono text-[9px]"
+                      className="capitalize text-xs"
                     >
                       {selectedZone.zone_type}
                     </Badge>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-zinc-600 dark:text-zinc-400">Risk Level:</span>
-                    <span className="font-mono font-semibold uppercase text-zinc-800 dark:text-zinc-200">
+                    <span className="font-semibold capitalize text-zinc-800 dark:text-zinc-200">
                       {selectedZone.risk_level}
                     </span>
                   </div>
@@ -517,7 +651,7 @@ export default function SiteMapPage() {
                 {/* Connected CCTV Cameras in this Zone */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className="font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider text-[10px] flex items-center gap-1">
+                    <span className="font-medium text-zinc-700 dark:text-zinc-300 capitalize text-xs flex items-center gap-1">
                       <Video className="h-3.5 w-3.5 text-amber-500" />
                       Stationed CCTV Feeds ({zoneCameras.length})
                     </span>
@@ -561,7 +695,7 @@ export default function SiteMapPage() {
                 {/* Connected IoT Sensors in this Zone */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className="font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider text-[10px] flex items-center gap-1">
+                    <span className="font-medium text-zinc-700 dark:text-zinc-300 capitalize text-xs flex items-center gap-1">
                       <Radio className="h-3.5 w-3.5 text-blue-500" />
                       Stationed IoT Sensors ({zoneSensors.length})
                     </span>
@@ -589,7 +723,7 @@ export default function SiteMapPage() {
                             <span className="font-bold font-mono text-blue-600 dark:text-blue-400 block text-xs">
                               {fmtNumber(s.value, 2)} {s.unit}
                             </span>
-                            <span className="text-[9px] text-zinc-400 uppercase font-mono">
+                            <span className="text-xs text-zinc-400 capitalize">
                               {s.status}
                             </span>
                           </div>
@@ -635,11 +769,11 @@ export default function SiteMapPage() {
           )}
 
           {/* 5. Default GIS Master Directory */}
-          {!isCreatingZone && !selectedCamera && !selectedSensor && !selectedZone && (
+          {!sidePanelBusy && !selectedCamera && !selectedSensor && !selectedZone && (
             <Card className="border-zinc-200 dark:border-zinc-800">
               <CardHeader className="p-4 pb-2 space-y-2">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-xs font-bold uppercase tracking-wider text-zinc-500">
+                  <CardTitle className="text-xs font-medium capitalize text-zinc-500">
                     Site GIS Directory
                   </CardTitle>
                   <span className="text-[10px] font-mono text-zinc-400">
@@ -704,7 +838,7 @@ export default function SiteMapPage() {
                           />
                         </div>
                         <div className="flex items-center gap-2 text-[10px] text-zinc-500 dark:text-zinc-400">
-                          <span className="uppercase font-mono">{zone.zone_type}</span>
+                          <span className="capitalize">{zone.zone_type}</span>
                           <span>•</span>
                           <span>{zone.coordinates?.length ?? 0} vertices</span>
                           {zone.area_sqm && (
@@ -742,7 +876,7 @@ export default function SiteMapPage() {
                         </div>
                         <div className="flex items-center justify-between text-[10px] text-zinc-500 font-mono">
                           <span>{cam.resolution ?? NO_DATA} • {fmtNumber(cam.fps, 0)} FPS</span>
-                          <span className="text-emerald-500 font-bold uppercase flex items-center gap-1">
+                          <span className="text-emerald-500 font-medium capitalize flex items-center gap-1">
                             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                             Live Stream
                           </span>

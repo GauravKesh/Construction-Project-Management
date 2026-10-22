@@ -2,7 +2,6 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import {
-  Video,
   Play,
   Pause,
   Volume2,
@@ -329,7 +328,7 @@ export function DashboardLiveVideoCard() {
           {/* Interactive 8-Camera Quick Channel Strip */}
           <div className="p-3 bg-zinc-50 dark:bg-zinc-950/80 border-t border-zinc-200 dark:border-zinc-800">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 font-mono flex items-center gap-1.5">
+              <span className="text-[11px] font-medium capitalize text-zinc-600 dark:text-zinc-400 flex items-center gap-1.5">
                 <Camera className="h-3.5 w-3.5 text-amber-500" />
                 Available Video Sources (8 Streams + Hardware Camera)
               </span>
@@ -352,8 +351,7 @@ export function DashboardLiveVideoCard() {
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className={`text-[10px] font-black font-mono uppercase ${
-                        isSelected ? "text-amber-600 dark:text-amber-400" : "text-zinc-600 dark:text-zinc-400"
+                      <span className={`text-xs font-medium capitalize ${ isSelected ?"text-amber-600 dark:text-amber-400" : "text-zinc-600 dark:text-zinc-400"
                       }`}>
                         {`CAM-0${idx + 1}`}
                       </span>

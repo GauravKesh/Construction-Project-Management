@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { Building2, ArrowRight, ChevronRight } from "lucide-react";
+import { ArrowRight, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -101,21 +101,18 @@ export function ProjectStatusCard({
     }`;
 
   return (
-    <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-md overflow-hidden">
+    <Card className="overflow-hidden">
       <CardHeader className="p-4 sm:p-5 pb-3 border-b border-zinc-200 dark:border-zinc-800 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500 text-zinc-950 font-bold">
-              <Building2 className="h-4 w-4" />
-            </div>
-            <span className="font-mono text-xs font-bold text-amber-500 uppercase tracking-wider">{project.code}</span>
+                        <span className="font-mono text-xs text-zinc-500">{project.code}</span>
             {project.status && (
               <Badge variant="outline" className="font-mono text-[10px] px-1.5 py-0">
                 {project.status.toUpperCase()}
               </Badge>
             )}
           </div>
-          <CardTitle className="text-lg font-bold text-zinc-900 dark:text-zinc-50">{project.name}</CardTitle>
+          <CardTitle className="text-base font-semibold">{project.name}</CardTitle>
           {project.description && (
             <CardDescription className="text-xs text-zinc-500 dark:text-zinc-400">{project.description}</CardDescription>
           )}
@@ -139,7 +136,7 @@ export function ProjectStatusCard({
             <Button
               variant="outline"
               size="sm"
-              className="h-8 text-xs gap-1.5 font-bold border-zinc-300 dark:border-zinc-700 hover:border-amber-500"
+              className="h-8 text-xs gap-1.5"
             >
               <span>Project Details</span>
               <ArrowRight className="h-3.5 w-3.5" />
@@ -151,52 +148,52 @@ export function ProjectStatusCard({
       <CardContent className="p-4 sm:p-5 space-y-5">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Schedule progress */}
-          <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-950/60">
+          <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono uppercase font-bold text-zinc-500 dark:text-zinc-400">
+              <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
                 Mean Task Progress
               </span>
-              <span className="text-[10px] font-mono text-zinc-500">
+              <span className="text-xs text-zinc-500">
                 {project.end_date ? `Target: ${project.end_date}` : NO_DATA}
               </span>
             </div>
-            <div className="mt-3 font-mono text-3xl font-black text-zinc-900 dark:text-zinc-50">{fmtPct(meanProgress)}</div>
+            <div className="mt-3 text-3xl font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-zinc-50">{fmtPct(meanProgress)}</div>
             <div className="mt-3 h-2.5 w-full rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden">
               <div className="h-full bg-amber-500 rounded-full" style={{ width: `${meanProgress ?? 0}%` }} />
             </div>
-            <p className="mt-1 text-[10px] font-mono text-zinc-400">
+            <p className="mt-1.5 text-xs text-zinc-500">
               Unweighted average over {schedules.length} schedule task{schedules.length === 1 ? "" : "s"}
             </p>
           </div>
 
           {/* Budget and BOQ value */}
-          <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-950/60">
-            <span className="text-[10px] font-mono uppercase font-bold text-zinc-500 dark:text-zinc-400">
+          <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800">
+            <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
               Budget & BOQ Consumption
             </span>
-            <div className="mt-3 font-mono text-3xl font-black text-zinc-900 dark:text-zinc-50">{fmtPct(boqConsumedPct)}</div>
+            <div className="mt-3 text-3xl font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-zinc-50">{fmtPct(boqConsumedPct)}</div>
             <div className="mt-3 h-2.5 w-full rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden">
               <div className="h-full bg-amber-500" style={{ width: `${Math.min(100, boqConsumedPct ?? 0)}%` }} />
             </div>
-            <p className="mt-1 text-[10px] font-mono text-zinc-400">
+            <p className="mt-1.5 text-xs text-zinc-500">
               BOQ consumed {fmtNumber(boqConsumed, 0)} of {fmtNumber(boqPlanned || null, 0)} planned value · Budget{" "}
               {fmtNumber(project.budget, 0)}
             </p>
           </div>
 
           {/* Schedule status breakdown */}
-          <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-950/60">
-            <span className="text-[10px] font-mono uppercase font-bold text-zinc-500 dark:text-zinc-400">
+          <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800">
+            <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
               Schedule Task Status
             </span>
             {schedules.length === 0 ? (
               <p className="mt-3 text-xs text-zinc-500">No schedule tasks</p>
             ) : (
-              <div className="mt-3 grid grid-cols-2 gap-1.5 text-center text-xs font-mono">
+              <div className="mt-3 grid grid-cols-2 gap-1.5 text-center text-xs">
                 {Object.entries(statusCounts).map(([status, count]) => (
                   <div key={status} className="p-1.5 rounded bg-zinc-100 dark:bg-zinc-900">
-                    <span className="text-[9px] text-zinc-400 block uppercase">{status.replace(/_/g, " ")}</span>
-                    <span className="font-bold text-zinc-800 dark:text-zinc-200">{count}</span>
+                    <span className="text-[11px] text-zinc-500 block capitalize">{status.replace(/_/g, " ")}</span>
+                    <span className="text-base font-semibold tabular-nums text-zinc-800 dark:text-zinc-200">{count}</span>
                   </div>
                 ))}
               </div>
@@ -234,7 +231,7 @@ export function ProjectStatusCard({
                   return (
                     <div
                       key={sch.id}
-                      className="p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/40 space-y-2"
+                      className="p-3.5 rounded-lg border border-zinc-200 dark:border-zinc-800 space-y-2"
                     >
                       <div className="flex items-center justify-between">
                         <span className="font-mono text-[10px] font-bold text-amber-500">
@@ -280,7 +277,7 @@ export function ProjectStatusCard({
                   return (
                     <div
                       key={b.id}
-                      className="p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/40 space-y-2 text-xs"
+                      className="p-3.5 rounded-lg border border-zinc-200 dark:border-zinc-800 space-y-2 text-xs"
                     >
                       <div className="flex items-center justify-between">
                         <span className="font-mono text-[10px] font-bold text-amber-500">{b.item_code}</span>

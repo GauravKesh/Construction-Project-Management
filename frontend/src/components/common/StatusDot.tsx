@@ -8,7 +8,7 @@ interface StatusDotProps {
   className?: string;
 }
 
-export function StatusDot({ status, size = "md", pulse = true, className }: StatusDotProps) {
+export function StatusDot({ status, size = "md", pulse = false, className }: StatusDotProps) {
   const norm = (status || "").toLowerCase();
   const isGood = norm === "online" || norm === "connected" || norm === "healthy" || norm === "streaming" || norm === "ready";
   const isWarn = norm === "warning" || norm === "reconnecting" || norm === "connecting" || norm === "action_required";

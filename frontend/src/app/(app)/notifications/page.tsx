@@ -86,7 +86,7 @@ export default function NotificationsPage() {
         {/* Left: Notifications List */}
         <div className="lg:col-span-2 space-y-3">
           <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 p-5 space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <h3 className="text-xs font-medium capitalize text-zinc-500 dark:text-zinc-400">
               Notification Stream ({notifications.length})
             </h3>
 
@@ -117,7 +117,7 @@ export default function NotificationsPage() {
         {/* Right: Preferences */}
         <div className="space-y-4">
           <Card className="border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 p-5 space-y-5 text-xs">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <h3 className="text-xs font-medium capitalize text-zinc-500 dark:text-zinc-400">
               Dispatch Preferences
             </h3>
 

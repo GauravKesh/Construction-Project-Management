@@ -152,7 +152,7 @@ export default function AlertsPage() {
                   variant={severityFilter === sev ? "amber" : "outline"}
                   size="sm"
                   onClick={() => setSeverityFilter(sev)}
-                  className="h-8 px-2 text-[10px] uppercase font-mono"
+                  className="h-8 px-2 text-xs capitalize"
                 >
                   {sev}
                 </Button>
@@ -183,7 +183,7 @@ export default function AlertsPage() {
                       </h4>
                       <Badge
                         variant="outline"
-                        className="text-[10px] uppercase font-mono"
+                        className="text-xs capitalize"
                       >
                         {alert.status}
                       </Badge>
@@ -289,7 +289,7 @@ export default function AlertsPage() {
               {/* Threshold Comparison */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800">
-                  <span className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-semibold">
+                  <span className="text-xs text-zinc-500 dark:text-zinc-400 capitalize font-semibold">
                     Reading at Trigger
                   </span>
                   <div className="font-mono text-xl font-black mt-1 text-red-500 dark:text-red-400">
@@ -297,7 +297,7 @@ export default function AlertsPage() {
                   </div>
                 </div>
                 <div className="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800">
-                  <span className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-semibold">
+                  <span className="text-xs text-zinc-500 dark:text-zinc-400 capitalize font-semibold">
                     Configured Ceiling
                   </span>
                   <div className="font-mono text-xl font-black mt-1 text-zinc-800 dark:text-zinc-200">
@@ -308,7 +308,7 @@ export default function AlertsPage() {
 
               {/* Timeline Context */}
               <div className="space-y-2 text-xs">
-                <span className="text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 tracking-wider">
+                <span className="text-xs capitalize font-medium text-zinc-500 dark:text-zinc-400">
                   Audit Lifecycle
                 </span>
                 <div className="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 space-y-2 font-mono text-[11px]">

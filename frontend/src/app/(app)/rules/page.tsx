@@ -118,7 +118,7 @@ export default function RulesPage() {
         <div className="lg:col-span-7 space-y-6">
           <Card className="border-zinc-200 dark:border-zinc-800">
             <CardHeader className="p-5 pb-3">
-              <CardTitle className="text-sm font-bold uppercase tracking-wider text-zinc-500">
+              <CardTitle className="text-sm font-medium capitalize text-zinc-500">
                 Rule Definition & Condition Logic
               </CardTitle>
               <CardDescription className="text-xs">
@@ -209,7 +209,7 @@ export default function RulesPage() {
                         variant={severity === s ? "amber" : "outline"}
                         size="sm"
                         onClick={() => setSeverity(s)}
-                        className="h-8 text-xs uppercase font-mono"
+                        className="h-8 text-xs capitalize"
                       >
                         {s}
                       </Button>
@@ -234,7 +234,7 @@ export default function RulesPage() {
 
               {/* Plain English Sentence Preview */}
               <div className="p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/5 space-y-1">
-                <span className="text-[10px] uppercase font-bold text-amber-600 dark:text-amber-500 font-mono flex items-center gap-1.5">
+                <span className="text-xs capitalize font-medium text-amber-600 dark:text-amber-500 flex items-center gap-1.5">
                   <Sparkles className="h-3.5 w-3.5" />
                   Plain-English Predicate Preview
                 </span>
@@ -257,7 +257,7 @@ export default function RulesPage() {
           {/* Dry Run Simulator */}
           <Card className="border-zinc-200 dark:border-zinc-800">
             <CardHeader className="p-5 pb-3">
-              <CardTitle className="text-sm font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-2">
+              <CardTitle className="text-sm font-medium capitalize text-zinc-500 flex items-center gap-2">
                 <Zap className="h-4 w-4 text-amber-500" />
                 Rule Dry-Run Test Simulation
               </CardTitle>
@@ -308,7 +308,7 @@ export default function RulesPage() {
         <div className="lg:col-span-5 space-y-4">
           <Card className="border-zinc-200 dark:border-zinc-800">
             <CardHeader className="p-5 pb-3">
-              <CardTitle className="text-sm font-bold uppercase tracking-wider text-zinc-500">
+              <CardTitle className="text-sm font-medium capitalize text-zinc-500">
                 Active Stream Rules ({Array.isArray(rules) ? rules.length : 0})
               </CardTitle>
               <CardDescription className="text-xs">

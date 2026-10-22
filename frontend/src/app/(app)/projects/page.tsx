@@ -231,7 +231,7 @@ export default function ProjectsPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="p-4 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-mono text-zinc-500 uppercase">Total Projects</span>
+            <span className="text-xs text-zinc-500 capitalize">Total Projects</span>
             <Building2 className="h-4 w-4 text-amber-500" />
           </div>
           <div className="text-2xl font-black font-mono text-zinc-900 dark:text-zinc-50 mt-1">
@@ -244,7 +244,7 @@ export default function ProjectsPage() {
 
         <Card className="p-4 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-mono text-zinc-500 uppercase">Portfolio Capex</span>
+            <span className="text-xs text-zinc-500 capitalize">Portfolio Capex</span>
             <DollarSign className="h-4 w-4 text-emerald-500" />
           </div>
           <div className="text-2xl font-black font-mono text-zinc-900 dark:text-zinc-50 mt-1">
@@ -257,7 +257,7 @@ export default function ProjectsPage() {
 
         <Card className="p-4 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-mono text-zinc-500 uppercase">Active Context</span>
+            <span className="text-xs text-zinc-500 capitalize">Active Context</span>
             <CheckCircle2 className="h-4 w-4 text-amber-500" />
           </div>
           <div className="text-sm font-bold font-mono text-amber-500 truncate mt-1">
@@ -270,7 +270,7 @@ export default function ProjectsPage() {
 
         <Card className="p-4 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-mono text-zinc-500 uppercase">Database Status</span>
+            <span className="text-xs text-zinc-500 capitalize">Database Status</span>
             <Sparkles className="h-4 w-4 text-blue-500" />
           </div>
           <div className="text-sm font-bold font-mono text-emerald-500 mt-1 flex items-center gap-1.5">
@@ -301,11 +301,11 @@ export default function ProjectsPage() {
               <div className="flex items-start justify-between">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-bold text-amber-500 uppercase tracking-wider">
+                    <span className="text-xs font-medium text-amber-500 capitalize">
                       {proj.code}
                     </span>
                     {isActive && (
-                      <Badge variant="warning" className="text-[9px] font-mono uppercase font-bold py-0 h-4">
+                      <Badge variant="warning" className="text-xs capitalize font-medium py-0 h-4">
                         Active Working Context
                       </Badge>
                     )}
@@ -329,7 +329,7 @@ export default function ProjectsPage() {
                         ? "outline"
                         : "warning"
                     }
-                    className="font-mono text-[10px] uppercase"
+                    className="text-xs capitalize"
                   >
                     {proj.status}
                   </Badge>
@@ -361,19 +361,19 @@ export default function ProjectsPage() {
               {/* Metrics */}
               <div className="grid grid-cols-3 gap-3 pt-3 border-t border-zinc-200 dark:border-zinc-800 text-xs font-mono">
                 <div>
-                  <span className="text-zinc-500 block text-[10px] uppercase">Budget</span>
+                  <span className="text-zinc-500 block text-xs capitalize">Budget</span>
                   <span className="font-bold text-zinc-800 dark:text-zinc-200">
                     {budgetMillions !== "—" ? `$${budgetMillions}M` : "Not Set"}
                   </span>
                 </div>
                 <div>
-                  <span className="text-zinc-500 block text-[10px] uppercase">Start Date</span>
+                  <span className="text-zinc-500 block text-xs capitalize">Start Date</span>
                   <span className="font-bold text-zinc-800 dark:text-zinc-200">
                     {proj.start_date ?? "—"}
                   </span>
                 </div>
                 <div>
-                  <span className="text-zinc-500 block text-[10px] uppercase">Target End</span>
+                  <span className="text-zinc-500 block text-xs capitalize">Target End</span>
                   <span className="font-bold text-zinc-800 dark:text-zinc-200">
                     {proj.end_date ?? "—"}
                   </span>
@@ -383,7 +383,7 @@ export default function ProjectsPage() {
               {/* Construction Phase & Progress Ribbon */}
               <div className="p-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 space-y-1.5 text-xs">
                 <div className="flex items-center justify-between font-mono">
-                  <span className="text-[10px] uppercase font-bold text-sky-600 dark:text-sky-400 flex items-center gap-1.5">
+                  <span className="text-xs capitalize font-medium text-sky-600 dark:text-sky-400 flex items-center gap-1.5">
                     <span className="h-1.5 w-1.5 rounded-full bg-sky-500 animate-pulse" />
                     Active Phase 2: Substructure & Foundation
                   </span>

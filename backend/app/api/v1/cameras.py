@@ -14,8 +14,16 @@ from app.db.repositories.audit_repo import AuditRepository
 from app.db.repositories.camera_repo import CameraRepository
 from app.gateway.auth import get_current_user
 from app.gateway.rbac import check_site_access, require_roles
-from app.ingestion.video_stream_handler import stream_manager
+import asyncio
+from app.ingestion.video_stream_handler import (
+    generate_mjpeg_stream,
+    get_last_error,
+    get_latest_frame,
+    probe_stream,
+)
 from app.schemas.camera import (
+    CameraConnectionTestRequest,
+    CameraConnectionTestResponse,
     CameraCreate,
     CameraResponse,
     CameraStatusResponse,
@@ -57,7 +65,7 @@ async def create_camera(
     if existing:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Camera code already exists")
 
-    camera = await camera_repo.create(site_id=site_id, **req.model_dump())
+    camera = await camera_repo.create(site_id=site_id, status="active", **req.model_dump())
     await audit_repo.record(
         action="CREATE_CAMERA",
         entity_type="camera",
@@ -117,7 +125,7 @@ async def delete_camera(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Camera not found")
     await check_site_access(camera.site_id, current_user)
 
-    await stream_manager.stop_camera(str(camera_id))
+    # Soft-deleted cameras drop out of the video handler's next registry sync
     await camera_repo.delete(camera_id, soft=True)
     await audit_repo.record(
         action="DELETE_CAMERA",
@@ -128,10 +136,34 @@ async def delete_camera(
     return StatusMessage(status="ok", message="Camera soft deleted successfully")
 
 
+CAMERA_OPERATORS = [UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.SAFETY_OFFICER, UserRole.SITE_ENGINEER]
+
+
+@router.post("/cameras/test-connection", response_model=CameraConnectionTestResponse)
+async def test_camera_connection(
+    req: CameraConnectionTestRequest,
+    current_user: User = Depends(require_roles(CAMERA_OPERATORS)),
+):
+    """
+    Open the stream from the server and read one frame, so a camera can be checked
+    before it is registered. Restricted to operator roles because it makes the
+    server connect to the given address.
+    """
+    result = await asyncio.to_thread(probe_stream, req.stream_url, 8.0)
+    return CameraConnectionTestResponse(
+        ok=result.ok,
+        width=result.width,
+        height=result.height,
+        fps=result.fps,
+        error=result.error,
+        elapsed_ms=result.elapsed_ms,
+    )
+
+
 @router.post("/cameras/{camera_id}/start", response_model=StatusMessage)
 async def start_camera_stream(
     camera_id: uuid.UUID,
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.SAFETY_OFFICER, UserRole.SITE_ENGINEER])),
+    current_user: User = Depends(require_roles(CAMERA_OPERATORS)),
     camera_repo: CameraRepository = Depends(get_camera_repo),
 ):
     camera = await camera_repo.get_by_id_active(camera_id)
@@ -139,23 +171,15 @@ async def start_camera_stream(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Camera not found")
     await check_site_access(camera.site_id, current_user)
 
-    success = await stream_manager.start_camera(
-        camera_id=str(camera.id),
-        site_id=str(camera.site_id),
-        stream_url=camera.stream_url,
-        fps=camera.fps,
-    )
-    if not success:
-        raise HTTPException(status_code=500, detail="Failed to initialize camera stream worker")
-
-    await camera_repo.update_status(camera_id, "streaming")
-    return StatusMessage(status="ok", message=f"Camera {camera.camera_code} stream started")
+    # The video handler process starts the worker on its next registry sync
+    await camera_repo.update_status(camera_id, "active")
+    return StatusMessage(status="ok", message=f"Camera {camera.camera_code} will start streaming within a few seconds")
 
 
 @router.post("/cameras/{camera_id}/stop", response_model=StatusMessage)
 async def stop_camera_stream(
     camera_id: uuid.UUID,
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.SAFETY_OFFICER, UserRole.SITE_ENGINEER])),
+    current_user: User = Depends(require_roles(CAMERA_OPERATORS)),
     camera_repo: CameraRepository = Depends(get_camera_repo),
 ):
     camera = await camera_repo.get_by_id_active(camera_id)
@@ -163,9 +187,8 @@ async def stop_camera_stream(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Camera not found")
     await check_site_access(camera.site_id, current_user)
 
-    await stream_manager.stop_camera(str(camera_id))
     await camera_repo.update_status(camera_id, "inactive")
-    return StatusMessage(status="ok", message=f"Camera {camera.camera_code} stream stopped")
+    return StatusMessage(status="ok", message=f"Camera {camera.camera_code} will stop within a few seconds")
 
 
 @router.get("/cameras/{camera_id}/status", response_model=CameraStatusResponse)
@@ -179,7 +202,7 @@ async def get_camera_status(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Camera not found")
     await check_site_access(camera.site_id, current_user)
 
-    is_active = stream_manager.is_streaming(str(camera_id))
+    is_active = await get_latest_frame(str(camera_id)) is not None
     return CameraStatusResponse(
         camera_id=camera.id,
         camera_code=camera.camera_code,
@@ -188,6 +211,7 @@ async def get_camera_status(
         is_cv_enabled=camera.is_cv_enabled,
         last_frame_at=camera.last_frame_at,
         stream_active=is_active,
+        last_error=None if is_active else await get_last_error(str(camera_id)),
     )
 
 
@@ -202,16 +226,17 @@ async def get_camera_snapshot(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Camera not found")
     await check_site_access(camera.site_id, current_user)
 
-    jpeg_bytes = await stream_manager.get_latest_frame_jpeg(str(camera_id))
+    jpeg_bytes = await get_latest_frame(str(camera_id))
     if not jpeg_bytes:
         raise HTTPException(status_code=404, detail="No snapshot currently available for camera")
 
-    return Response(content=jpeg_bytes, media_type="image/jpeg")
+    return Response(content=jpeg_bytes, media_type="image/jpeg", headers={"Cache-Control": "no-store"})
 
 
 @router.get("/cameras/{camera_id}/stream")
 async def get_camera_mjpeg_stream(
     camera_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
     camera_repo: CameraRepository = Depends(get_camera_repo),
 ):
     """
@@ -220,8 +245,9 @@ async def get_camera_mjpeg_stream(
     camera = await camera_repo.get_by_id_active(camera_id)
     if not camera:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Camera not found")
+    await check_site_access(camera.site_id, current_user)
 
     return StreamingResponse(
-        stream_manager.generate_mjpeg_stream(str(camera_id)),
+        generate_mjpeg_stream(str(camera_id)),
         media_type="multipart/x-mixed-replace; boundary=frame",
     )

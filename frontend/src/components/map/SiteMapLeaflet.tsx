@@ -82,23 +82,40 @@ const createCameraMarker = (cam: ParsedCameraNode, isSelected = false) => {
   });
 };
 
-// Map click listener for drawing geofence
+// Map click listener for drawing geofences and placing devices
 function MapDrawingHandler({
   isDrawing,
   onAddPoint,
+  placementMode,
+  onPlace,
 }: {
   isDrawing: boolean;
   onAddPoint: (pt: [number, number]) => void;
+  placementMode?: DevicePlacementMode;
+  onPlace?: (pt: [number, number]) => void;
 }) {
+  const map = useMap();
+  useEffect(() => {
+    const el = map.getContainer();
+    el.style.cursor = isDrawing || placementMode ? "crosshair" : "";
+    return () => {
+      el.style.cursor = "";
+    };
+  }, [map, isDrawing, placementMode]);
+
   useMapEvents({
     click(e) {
-      if (isDrawing) {
+      if (placementMode && onPlace) {
+        onPlace([e.latlng.lat, e.latlng.lng]);
+      } else if (isDrawing) {
         onAddPoint([e.latlng.lat, e.latlng.lng]);
       }
     },
   });
   return null;
 }
+
+export type DevicePlacementMode = "sensor" | "camera" | null;
 
 // Invalidate size on load & handle centering
 function MapController({ center }: { center: [number, number] }) {
@@ -120,6 +137,11 @@ interface SiteMapLeafletProps {
   onSelectSensor?: (sensor: ParsedSensorNode) => void;
   isDrawingMode?: boolean;
   onDrawingPointsChange?: (points: [number, number][]) => void;
+  /** When set, a map click reports its coordinates via onPlace instead of selecting things */
+  placementMode?: DevicePlacementMode;
+  onPlace?: (pt: [number, number]) => void;
+  /** Location chosen for a device that is being added */
+  pendingPoint?: [number, number] | null;
 }
 
 export default function SiteMapLeaflet({
@@ -132,6 +154,9 @@ export default function SiteMapLeaflet({
   onSelectSensor,
   isDrawingMode = false,
   onDrawingPointsChange,
+  placementMode = null,
+  onPlace,
+  pendingPoint = null,
 }: SiteMapLeafletProps) {
   const [mounted, setMounted] = useState(false);
   const [tileProvider, setTileProvider] = useState<"satellite" | "dark" | "osm">("satellite");
@@ -148,7 +173,17 @@ export default function SiteMapLeaflet({
     setMounted(true);
   }, []);
 
-  const data: NormalizedSiteMap = normalizeSiteMapData(mapData);
+  // Accept either the raw GeoJSON payload or data the page has already normalized
+  const data: NormalizedSiteMap =
+    mapData && Array.isArray(mapData.zones) && Array.isArray(mapData.sensors)
+      ? (mapData as NormalizedSiteMap)
+      : normalizeSiteMapData(mapData);
+
+  // While picking points (placing a device or drawing a zone), existing shapes and
+  // markers must not capture clicks: Leaflet stops map clicks on layers with popups,
+  // and the site boundary covers the whole site. Leaflet reads `interactive` only at
+  // creation, so layer keys include this flag to recreate them when the mode changes.
+  const pickingPoints = isDrawingMode || Boolean(placementMode);
 
   const handleAddDrawingPoint = (pt: [number, number]) => {
     const updated = [...drawingPoints, pt];
@@ -334,7 +369,12 @@ export default function SiteMapLeaflet({
         >
           <ZoomControl position="bottomright" />
           <MapController center={data.center} />
-          <MapDrawingHandler isDrawing={isDrawingMode} onAddPoint={handleAddDrawingPoint} />
+          <MapDrawingHandler
+            isDrawing={isDrawingMode}
+            onAddPoint={handleAddDrawingPoint}
+            placementMode={placementMode}
+            onPlace={onPlace}
+          />
 
           <TileLayer
             key={tileProvider}
@@ -347,6 +387,8 @@ export default function SiteMapLeaflet({
           {/* Site Outer Boundary Polygon */}
           {showBoundary && data.boundary.length > 0 && (
             <Polygon
+              key={`boundary-${pickingPoints}`}
+              interactive={!pickingPoints}
               positions={data.boundary}
               pathOptions={{
                 color: "#64748b",
@@ -366,12 +408,16 @@ export default function SiteMapLeaflet({
           )}
 
           {/* Active Geofence Zones */}
+          {/* Largest first, so smaller zones nested inside bigger ones stay on top and clickable */}
           {showZones &&
-            data.zones.map((zone) => {
+            [...data.zones]
+              .sort((a, b) => (b.area_sqm ?? 0) - (a.area_sqm ?? 0))
+              .map((zone) => {
               const isSelected = selectedZone?.id === zone.id;
               return (
                 <Polygon
-                  key={zone.id}
+                  key={`${zone.id}-${pickingPoints}`}
+                  interactive={!pickingPoints}
                   positions={zone.coordinates}
                   pathOptions={{
                     color: zone.color,
@@ -388,7 +434,7 @@ export default function SiteMapLeaflet({
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-bold text-zinc-900 block">{zone.name}</span>
                         <span
-                          className="px-1.5 py-0.2 rounded text-[9px] font-mono uppercase font-bold text-white"
+                          className="px-1.5 py-0.2 rounded text-xs capitalize font-medium text-white"
                           style={{ backgroundColor: zone.color }}
                         >
                           {zone.zone_type}
@@ -418,10 +464,11 @@ export default function SiteMapLeaflet({
           {/* Drawing Polyline Preview */}
           {isDrawingMode && drawingPoints.length > 0 && (
             <>
-              <Polyline positions={drawingPoints} pathOptions={{ color: "#f59e0b", weight: 3, dashArray: "4, 4" }} />
+              <Polyline interactive={false} positions={drawingPoints} pathOptions={{ color: "#f59e0b", weight: 3, dashArray: "4, 4" }} />
               {drawingPoints.map((pt, idx) => (
                 <Marker
                   key={idx}
+                  interactive={false}
                   position={pt}
                   icon={L.divIcon({
                     className: "drawing-vertex",
@@ -434,13 +481,30 @@ export default function SiteMapLeaflet({
             </>
           )}
 
+          {/* Location picked for a device being added */}
+          {pendingPoint && (
+            <Marker
+              interactive={false}
+              position={pendingPoint}
+              icon={L.divIcon({
+                className: "pending-device",
+                html: `<div style="width:18px;height:18px;border-radius:50%;background:${
+                  placementMode === "camera" ? "#f59e0b" : "#3b82f6"
+                };border:3px solid #fff;box-shadow:0 0 0 4px rgba(255,255,255,0.25)"></div>`,
+                iconSize: [18, 18],
+                iconAnchor: [9, 9],
+              })}
+            />
+          )}
+
           {/* IoT Sensor Markers */}
           {showSensors &&
             data.sensors.map((sensor) => {
               const isSelected = selectedSensor?.id === sensor.id;
               return (
                 <Marker
-                  key={sensor.id}
+                  key={`${sensor.id}-${pickingPoints}`}
+                  interactive={!pickingPoints}
                   position={[sensor.lat, sensor.lng]}
                   icon={createSensorMarker(sensor, isSelected)}
                   eventHandlers={{
@@ -458,7 +522,7 @@ export default function SiteMapLeaflet({
                       </div>
                       <div className="flex items-center justify-between text-[10px] text-zinc-500 font-mono">
                         <span>Battery: {sensor.battery_level}%</span>
-                        <span className="text-emerald-600 font-bold uppercase">{sensor.status}</span>
+                        <span className="text-emerald-600 font-medium capitalize">{sensor.status}</span>
                       </div>
                       <button
                         type="button"
@@ -479,7 +543,8 @@ export default function SiteMapLeaflet({
               const isSelected = selectedCamera?.id === cam.id;
               return (
                 <Marker
-                  key={cam.id}
+                  key={`${cam.id}-${pickingPoints}`}
+                  interactive={!pickingPoints}
                   position={[cam.lat, cam.lng]}
                   icon={createCameraMarker(cam, isSelected)}
                   eventHandlers={{
@@ -495,7 +560,7 @@ export default function SiteMapLeaflet({
                       <div className="text-[10px] font-mono text-zinc-500">
                         {cam.resolution ?? NO_DATA} • {fmtNumber(cam.fps, 0)} FPS
                       </div>
-                      <span className="inline-block px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[9px] font-bold uppercase">
+                      <span className="inline-block px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-xs font-medium capitalize">
                         Stream Active (YOLOv8 CV)
                       </span>
                       <button
@@ -520,7 +585,7 @@ export default function SiteMapLeaflet({
           {/* Blueprint Header */}
           <div className="relative z-10 flex items-center justify-between text-xs border-b border-zinc-800 pb-3">
             <div>
-              <span className="text-[10px] text-amber-500 uppercase font-bold tracking-widest block">
+              <span className="text-xs text-amber-500 capitalize font-medium block">
                 CAD ARCHITECTURAL SITE PLAN • LEVEL 0 FOUNDATION
               </span>
               <h3 className="text-sm font-bold text-white mt-0.5">{data.site_name}</h3>

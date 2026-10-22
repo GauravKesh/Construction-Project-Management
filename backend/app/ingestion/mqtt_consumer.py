@@ -75,7 +75,8 @@ class MqttIngestionConsumer:
                 "sensor_id": str(data.get("sensor_id", "")),
                 "site_id": str(data.get("site_id", "")),
                 "type": str(data.get("type", "")),
-                "value": str(data.get("value", "0.0")),
+                # No default: a message without a value must be rejected, not stored as 0
+                "value": "" if data.get("value") is None else str(data.get("value")),
                 "unit": str(data.get("unit", "")),
                 "ts": str(data.get("ts", "")),
                 "battery": str(data.get("battery", "")),

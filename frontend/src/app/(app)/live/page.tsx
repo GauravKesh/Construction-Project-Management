@@ -28,6 +28,7 @@ import { normalizeList } from "@/lib/utils";
 import { toast } from "sonner";
 import { ConnectSourceModal } from "@/components/devices/ConnectSourceModal";
 import { ALL_CONSTRUCTION_CAMERAS } from "@/lib/constants/cameras";
+import { LiveClock } from "@/components/common/LiveClock";
 
 interface SensorItem {
   id: string;
@@ -195,7 +196,7 @@ export default function LiveMonitoringPage() {
                   variant={selectedType === type ? "default" : "outline"}
                   size="sm"
                   onClick={() => setSelectedType(type)}
-                  className="h-8 text-xs uppercase shrink-0 font-mono"
+                  className="h-8 text-xs capitalize shrink-0"
                 >
                   {type}
                 </Button>
@@ -218,7 +219,7 @@ export default function LiveMonitoringPage() {
                 >
                   <div>
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 font-mono">
+                      <span className="text-xs font-medium capitalize text-zinc-400">
                         {sensor.type}
                       </span>
                       <div className="flex items-center gap-2">
@@ -295,7 +296,7 @@ export default function LiveMonitoringPage() {
             <div>
               <div className="flex items-center justify-between pb-4 border-b border-zinc-200 dark:border-zinc-800">
                 <div>
-                  <span className="text-xs uppercase font-mono font-bold text-amber-500">
+                  <span className="text-xs capitalize font-medium text-amber-500">
                     {selectedSensor.type} Telemetry Stream
                   </span>
                   <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">
@@ -313,13 +314,13 @@ export default function LiveMonitoringPage() {
               {/* Sensor stats */}
               <div className="mt-6 grid grid-cols-2 gap-3">
                 <div className="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-850">
-                  <span className="text-[10px] text-zinc-400 uppercase font-semibold">Current Value</span>
+                  <span className="text-xs text-zinc-400 capitalize font-semibold">Current Value</span>
                   <div className="font-mono text-xl font-black mt-1">
                     {sensorLatest[selectedSensor.id]?.value ?? selectedSensor.current_value} {selectedSensor.unit}
                   </div>
                 </div>
                 <div className="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-850">
-                  <span className="text-[10px] text-zinc-400 uppercase font-semibold">Battery State</span>
+                  <span className="text-xs text-zinc-400 capitalize font-semibold">Battery State</span>
                   <div className="font-mono text-xl font-black mt-1 text-emerald-500">
                     {selectedSensor.battery}%
                   </div>
@@ -328,7 +329,7 @@ export default function LiveMonitoringPage() {
 
               {/* Real-time ring buffer list */}
               <div className="mt-6">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-3">
+                <h4 className="text-xs font-medium capitalize text-zinc-400 mb-3">
                   Recent Telemetry Buffer (Last 30 Readings)
                 </h4>
                 <div className="space-y-1.5 max-h-80 overflow-y-auto pr-1">
@@ -492,9 +493,6 @@ function CameraFeedTile({
           className="absolute inset-0 w-full h-full object-cover"
         />
 
-        {/* Scanline CRT effect */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%)] bg-[size:100%_4px] pointer-events-none opacity-40" />
-
         {/* Canvas bounding box overlay */}
         <canvas
           ref={canvasRef}
@@ -506,7 +504,9 @@ function CameraFeedTile({
         {/* Live timestamp overlay */}
         <div className="absolute top-2 left-2 z-20 font-mono text-[10px] text-emerald-400 bg-black/70 backdrop-blur-xs px-2 py-0.5 rounded border border-white/5 flex items-center gap-1.5">
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          <span>REC • {new Date().toLocaleTimeString()}</span>
+          <span>
+            LIVE • <LiveClock />
+          </span>
         </div>
 
         {/* Top-Right Resolution Tag */}

@@ -22,6 +22,7 @@ from app.gateway.auth import get_current_user, get_current_user_payload, securit
 from app.gateway.rbac import check_site_access, require_roles
 from app.schemas.common import PaginatedResponse, StatusMessage
 from app.schemas.sensor import (
+    SensorConnectionInfo,
     ReadingRangeItem,
     SensorCreate,
     SensorHealthResponse,
@@ -246,6 +247,49 @@ async def http_telemetry_ingest(
     }
     await r.xadd(KEY_STREAM_INGEST, msg_data)
     return StatusMessage(status="ok", message="Sensor reading queued for ingestion")
+
+
+@router.get("/sensors/{sensor_id}/connection", response_model=SensorConnectionInfo)
+async def get_sensor_connection_info(
+    sensor_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    sensor_repo: SensorRepository = Depends(get_sensor_repo),
+):
+    """
+    Everything a field device needs to send readings for this sensor: the MQTT topic
+    (which encodes site, type and sensor id) and the HTTP ingest alternative.
+    Secrets (MQTT password, ingest key) are never returned, only whether they are required.
+    """
+    sensor = await sensor_repo.get_by_id_active(sensor_id)
+    if not sensor:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sensor not found")
+    await check_site_access(sensor.site_id, current_user)
+
+    sensor_type = sensor.sensor_type.lower()
+    api_base = (settings.PUBLIC_API_BASE_URL or f"http://localhost:{settings.PORT}").rstrip("/")
+    return SensorConnectionInfo(
+        sensor_id=sensor.id,
+        sensor_code=sensor.sensor_code,
+        site_id=sensor.site_id,
+        sensor_type=sensor_type,
+        unit=sensor.unit,
+        mqtt_host=settings.MQTT_PUBLIC_HOST or settings.MQTT_BROKER_HOST,
+        mqtt_port=settings.MQTT_BROKER_PORT,
+        # Must match the consumer's subscription pattern (MQTT_TOPIC_SUB, default sites/+/sensors/#)
+        mqtt_topic=f"sites/{sensor.site_id}/sensors/{sensor_type}/{sensor.id}",
+        mqtt_requires_auth=bool(settings.MQTT_USERNAME),
+        http_ingest_url=f"{api_base}{settings.ROOT_PATH}/api/v1/telemetry/ingest",
+        http_requires_api_key=bool(settings.INGEST_API_KEY),
+        example_payload={
+            "sensor_id": str(sensor.id),
+            "site_id": str(sensor.site_id),
+            "type": sensor_type,
+            "value": 0.0,
+            "unit": sensor.unit,
+            "ts": "2026-01-01T12:00:00Z",
+        },
+        last_seen_at=sensor.last_seen_at,
+    )
 
 
 @router.get("/sensors/{sensor_id}/health", response_model=SensorHealthResponse)

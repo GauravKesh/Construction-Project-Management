@@ -7,13 +7,10 @@ import {
   Users,
   HardHat,
   Radio,
-  Thermometer,
-  Droplets,
   AlertTriangle,
   ArrowRight,
   CheckCircle2,
   RefreshCw,
-  Bell,
 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { KpiCard } from "@/components/common/KpiCard";
@@ -202,7 +199,7 @@ export default function DashboardPage() {
       )}
 
       {/* KPIs (all from the backend; "—" means no data) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
         <KpiCard
           title="Open alerts"
           value={fmtNumber(summary?.active_alerts_count, 0)}
@@ -331,7 +328,7 @@ export default function DashboardPage() {
                   <div key={type} className="rounded-lg border border-zinc-200 dark:border-zinc-800 p-3">
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-zinc-500">{label}</span>
-                      <StatusDot status={reading ? "healthy" : "offline"} size="sm" pulse={false} />
+                      <StatusDot status={reading ? "healthy" : "idle"} size="sm" />
                     </div>
                     <div className="mt-1.5 flex items-baseline gap-1">
                       <span className="font-mono text-xl font-semibold text-zinc-900 dark:text-zinc-50">

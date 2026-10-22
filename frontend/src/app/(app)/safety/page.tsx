@@ -134,7 +134,7 @@ export default function SafetyPpePage() {
         <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card className="border-zinc-200 dark:border-zinc-800 p-5">
-              <span className="text-xs uppercase font-mono font-bold text-zinc-400">Frame Compliance</span>
+              <span className="text-xs capitalize font-medium text-zinc-400">Frame Compliance</span>
               <div className="mt-2 flex items-baseline gap-2">
                 <span className="font-mono text-3xl font-black text-emerald-500">
                   {fmtPct(ppeSummary?.compliance_rate)}
@@ -147,7 +147,7 @@ export default function SafetyPpePage() {
             </Card>
 
             <Card className="border-zinc-200 dark:border-zinc-800 p-5">
-              <span className="text-xs uppercase font-mono font-bold text-zinc-400">Person Compliance</span>
+              <span className="text-xs capitalize font-medium text-zinc-400">Person Compliance</span>
               <div className="mt-2 flex items-baseline gap-2">
                 <span className="font-mono text-3xl font-black text-zinc-900 dark:text-zinc-100">
                   {fmtPct(ppeSummary?.person_compliance_rate)}
@@ -160,7 +160,7 @@ export default function SafetyPpePage() {
             </Card>
 
             <Card className="border-zinc-200 dark:border-zinc-800 p-5">
-              <span className="text-xs uppercase font-mono font-bold text-zinc-400">Violation Frames</span>
+              <span className="text-xs capitalize font-medium text-zinc-400">Violation Frames</span>
               <div className="mt-2 flex items-baseline gap-2">
                 <span className="font-mono text-3xl font-black text-zinc-900 dark:text-zinc-100">
                   {fmtNumber(ppeSummary?.violations_frames, 0)}
@@ -170,7 +170,7 @@ export default function SafetyPpePage() {
             </Card>
 
             <Card className="border-zinc-200 dark:border-zinc-800 p-5">
-              <span className="text-xs uppercase font-mono font-bold text-zinc-400">Detector</span>
+              <span className="text-xs capitalize font-medium text-zinc-400">Detector</span>
               <div className="mt-2 flex items-baseline gap-2">
                 <span className="font-mono text-lg font-black text-zinc-900 dark:text-zinc-100 break-all">
                   {ppeSummary?.detectors?.length ? ppeSummary.detectors.join(", ") : NO_DATA}
@@ -188,7 +188,7 @@ export default function SafetyPpePage() {
           <Card className="border-zinc-200 dark:border-zinc-800">
             <CardHeader className="p-5 pb-3 flex flex-row items-center justify-between">
               <div>
-                <CardTitle className="text-sm font-bold uppercase tracking-wider text-zinc-500">
+                <CardTitle className="text-sm font-medium capitalize text-zinc-500">
                   Latest Captured Violations
                 </CardTitle>
                 <CardDescription className="text-xs">
@@ -219,7 +219,7 @@ export default function SafetyPpePage() {
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                       <div className="absolute top-2 left-2">
-                        <Badge variant="destructive" className="text-[10px] uppercase">
+                        <Badge variant="destructive" className="text-xs capitalize">
                           {v.violation_type.replace("_", " ")}
                         </Badge>
                       </div>
@@ -254,7 +254,7 @@ export default function SafetyPpePage() {
                     className="w-full h-full object-cover"
                   />
                   <div className="absolute top-2 left-2 flex gap-2">
-                    <Badge variant="destructive" className="text-[10px] uppercase">
+                    <Badge variant="destructive" className="text-xs capitalize">
                       {v.violation_type.replace("_", " ")}
                     </Badge>
                   </div>
@@ -268,7 +268,7 @@ export default function SafetyPpePage() {
                   </div>
                   <div className="flex items-center justify-between text-[11px] text-zinc-400">
                     <span>AI Confidence: {(v.confidence * 100).toFixed(0)}%</span>
-                    <Badge variant="outline" className="text-[10px] uppercase font-mono">
+                    <Badge variant="outline" className="text-xs capitalize">
                       {v.status}
                     </Badge>
                   </div>
@@ -282,7 +282,7 @@ export default function SafetyPpePage() {
         <TabsContent value="analyzer" className="space-y-4">
           <Card className="border-zinc-200 dark:border-zinc-800">
             <CardHeader className="p-5 pb-3">
-              <CardTitle className="text-sm font-bold uppercase tracking-wider text-zinc-500">
+              <CardTitle className="text-sm font-medium capitalize text-zinc-500">
                 Interactive Computer Vision Tester
               </CardTitle>
               <CardDescription className="text-xs">
@@ -348,7 +348,7 @@ export default function SafetyPpePage() {
                   {/* Detection list */}
                   {analysisResult && (
                     <div className="mt-3 p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs space-y-2">
-                      <span className="font-bold text-zinc-700 dark:text-zinc-200 uppercase tracking-wider text-[10px]">
+                      <span className="font-medium text-zinc-700 dark:text-zinc-200 capitalize text-xs">
                         Detected Objects:
                       </span>
                       <div className="flex flex-wrap gap-2">
@@ -377,7 +377,7 @@ export default function SafetyPpePage() {
         <TabsContent value="config" className="space-y-4">
           <Card className="border-zinc-200 dark:border-zinc-800 max-w-2xl">
             <CardHeader className="p-5 pb-3">
-              <CardTitle className="text-sm font-bold uppercase tracking-wider text-zinc-500">
+              <CardTitle className="text-sm font-medium capitalize text-zinc-500">
                 Inference Model Tuning & Alert Rules
               </CardTitle>
               <CardDescription className="text-xs">
@@ -440,7 +440,7 @@ export default function SafetyPpePage() {
                 className="w-full h-full object-contain"
               />
               <div className="absolute top-3 left-3">
-                <Badge variant="destructive" className="uppercase font-mono">
+                <Badge variant="destructive" className="capitalize">
                   {selectedViolation.violation_type.replace("_", " ")}
                 </Badge>
               </div>

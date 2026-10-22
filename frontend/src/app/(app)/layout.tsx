@@ -6,6 +6,7 @@ import { TopBar } from "@/components/layout/TopBar";
 import { CommandPalette } from "@/components/common/CommandPalette";
 import { useAuthStore } from "@/stores/authStore";
 import { apiClient } from "@/lib/api/client";
+import { env } from "@/env";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const setUser = useAuthStore((s) => s.setUser);
@@ -28,14 +29,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           }
         })
         .catch(() => {
-          // If in standalone mock mode or initial load
-          setUser({
-            id: "usr-admin-01",
-            email: "admin@buildtrack.com",
-            full_name: "Gaurav Sharma (Admin)",
-            role: "admin",
-            is_active: true,
-          });
+          // Session is missing or invalid: sign out rather than impersonating a user
+          useAuthStore.getState().logout();
         });
     }
   }, [user, setUser]);
@@ -45,6 +40,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
         <TopBar />
+        {env.NEXT_PUBLIC_USE_MOCKS && (
+          <div className="bg-amber-500 text-zinc-950 text-xs font-bold text-center py-1.5 px-4">
+            MOCK MODE: live data on this page is simulated (NEXT_PUBLIC_USE_MOCKS=true). Do not use for analysis.
+          </div>
+        )}
         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
           <div className="mx-auto max-w-7xl">
             {children}

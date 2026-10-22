@@ -6,13 +6,13 @@ import { KpiCard } from "@/components/common/KpiCard";
 import { RiskGauge } from "@/components/common/RiskGauge";
 import { SeverityBadge } from "@/components/common/SeverityBadge";
 import { StatusDot } from "@/components/common/StatusDot";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
-import { Activity, ShieldAlert, Sparkles, HardHat } from "lucide-react";
+import { ShieldAlert } from "lucide-react";
 
 export default function DevComponentsCatalog() {
   const [sliderVal, setSliderVal] = useState(65);

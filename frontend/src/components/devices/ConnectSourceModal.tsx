@@ -19,12 +19,8 @@ import {
   Terminal,
   Copy,
   Check,
-  Send,
-  Plus,
   PlugZap,
-  Sparkles,
 } from "lucide-react";
-import { useLiveStore } from "@/stores/liveStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { toast } from "sonner";
 import { ALL_CONSTRUCTION_CAMERAS } from "@/lib/constants/cameras";

@@ -1,22 +1,17 @@
 "use client";
 
 import React, { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Bell,
   CheckCircle2,
-  AlertTriangle,
-  Filter,
   CheckCheck,
   Search,
   X,
-  Clock,
   ArrowRight,
-  Radio,
 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { SeverityBadge } from "@/components/common/SeverityBadge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";

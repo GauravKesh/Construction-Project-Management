@@ -9,11 +9,24 @@ import sys
 from datetime import datetime, timezone
 import aiomqtt
 from sqlalchemy import select
+from pathlib import Path
+
+# Allow `python scripts/<name>.py` from backend/ (as start.sh and the Makefile do)
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 from app.core.config import settings
 from app.core.logging import setup_logging
 from app.db.models.sensor import Sensor
 from app.db.models.project import Site
 from app.db.postgres import AsyncSessionLocal
+
+
+def _open_labels(path):
+    if not path:
+        return None
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    return open(path, "w", newline="")
+
 
 logger = logging.getLogger("mqtt_simulator")
 
@@ -56,7 +69,7 @@ async def run_simulator(
     logger.info(f"Loaded site '{site.name}' ({site_id}) with {len(sensors)} active sensors.")
 
     running = True
-    labels_file = open(labels_out, "w", newline="") if labels_out else None
+    labels_file = _open_labels(labels_out)
     labels = csv.writer(labels_file) if labels_file else None
     if labels:
         labels.writerow(["ts", "sensor_id", "sensor_code", "type", "value", "unit", "injected_spike", "seed"])

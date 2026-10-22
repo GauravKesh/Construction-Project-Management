@@ -6,6 +6,9 @@
 **Platform / Environment:** macOS / Python 3.12 / PostgreSQL 16 / MongoDB 7 / Redis 7 / Mosquitto MQTT 2.1  
 **Runner:** `pytest -v` with `pytest-asyncio` (session-scoped event loop)
 
+
+> **Corrections (2026-10-23).** This report described 32 tests run against the developer databases. The suite now has **63 backend tests** that run on isolated `*_test` databases (Postgres recreated per session, Mongo `_test`, Redis DB 15). Password hashing is **bcrypt**, not Argon2id. `test_redis_stream_publish_and_dlq` only exercises Redis stream commands; worker retry/DLQ behaviour is covered by `test_worker_retries_before_dead_lettering`.
+
 ---
 
 ## 1. Executive Summary
@@ -26,7 +29,7 @@ Status: ALL TESTS PASSING (100%)
 | 1 | `tests/test_validation.py` | 5 | Ingestion / Schema & Bound Validation | **PASSED** |
 | 2 | `tests/test_rule_engine.py` | 2 | Analytics / Complex Condition & Sliding Window | **PASSED** |
 | 3 | `tests/test_alert_dedup.py` | 2 | Real-time / Redis Cooldown & Severity Escalation | **PASSED** |
-| 4 | `tests/test_auth_rbac.py` | 5 | Security / Argon2id, JWT Tokens & Role Guards | **PASSED** |
+| 4 | `tests/test_auth_rbac.py` | 5 | Security / bcrypt, JWT Tokens & Role Guards | **PASSED** |
 | 5 | `tests/test_idempotent_telemetry.py` | 1 | Storage / Mongo TS, Hot Cache & PG Upserts | **PASSED** |
 | 6 | `tests/test_stream_retry_dlq.py` | 1 | Messaging / Redis Streams, Consumer Groups & DLQ | **PASSED** |
 | 7 | `tests/test_outbox.py` | 2 | Reliability / Transactional Outbox & Atomicity | **PASSED** |
@@ -58,17 +61,17 @@ Status: ALL TESTS PASSING (100%)
 - **`test_alert_escalation`**: Verifies automatic escalation of unacknowledged high-severity alerts (`escalation_level` 0 $\to$ 1 $\to$ 2) after timeout window.
 
 ### 3.4. Authentication, JWT & RBAC (`tests/test_auth_rbac.py`)
-- **`test_password_hashing`**: Verifies Argon2id password hashing, unique salts, and constant-time password verification.
-- **`test_jwt_token_creation_and_revocation`**: Generates HS256 JWT access & refresh tokens, validates expiry, and tests immediate blacklist revocation in Redis (`revoked:token:{jti}`).
+- **`test_password_hashing`**: Verifies bcrypt password hashing, unique salts, and constant-time password verification.
+- **`test_jwt_token_creation_and_revocation`**: Generates HS256 JWT access & refresh tokens, validates expiry, and tests immediate blacklist revocation in Redis (`tokens:revoked:{jti}`).
 - **`test_auth_me_endpoint`**: Verifies user profile retrieval and token validation.
 - **`test_unauthorized_access`**: Ensures protected routes return `401 Unauthorized` when tokens are missing or invalid.
 - **`test_rbac_admin_only_route`**: Validates role matrix: `safety_officer` cannot create users (returns `403 Forbidden`); `admin` successfully performs administrative operations.
 
 ### 3.5. Multi-Database Idempotent Telemetry (`tests/test_idempotent_telemetry.py`)
-- **`test_telemetry_persistence_and_cache`**: Tests concurrent ingestion of telemetry: writes time-series reading to MongoDB `sensor_readings`, performs atomic `$set` upsert to `sensor_latest`, refreshes Redis hot cache (`sensor:latest:{id}`), and updates sensor heartbeat in PostgreSQL.
+- **`test_telemetry_persistence_and_cache`**: Tests concurrent ingestion of telemetry: writes time-series reading to MongoDB `sensor_readings`, performs atomic `$set` upsert to `sensor_latest`, refreshes Redis hot cache (`latest:sensor:{id}`), and updates sensor heartbeat in PostgreSQL.
 
 ### 3.6. Stream Ingestion, Consumer Groups & DLQ (`tests/test_stream_retry_dlq.py`)
-- **`test_redis_stream_publish_and_dlq`**: Verifies Redis Stream `stream:sensor_readings` publication, consumer group reading (`XREADGROUP`), automatic ack (`XACK`), and poison-pill routing to Dead Letter Queue (`stream:dlq`) after max retry exhaustion.
+- **`test_redis_stream_publish_and_dlq`**: Verifies Redis Stream `stream:ingest` publication, consumer group reading (`XREADGROUP`), automatic ack (`XACK`), and poison-pill routing to Dead Letter Queue (`stream:dlq`) after max retry exhaustion.
 
 ### 3.7. Transactional Outbox Pattern (`tests/test_outbox.py`)
 - **`test_transactional_outbox_atomic_commit`**: Tests that business entities (Alert) and outbox events (`OutboxEvent`) commit in a single ACID PostgreSQL transaction.

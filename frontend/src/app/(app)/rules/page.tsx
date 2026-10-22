@@ -1,18 +1,12 @@
 "use client";
 
 import React, { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Sliders,
-  Plus,
   Play,
   CheckCircle2,
-  AlertTriangle,
   Zap,
-  ArrowRight,
   Sparkles,
-  ToggleLeft,
-  ToggleRight,
 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { SeverityBadge } from "@/components/common/SeverityBadge";
@@ -20,7 +14,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
 import { apiClient } from "@/lib/api/client";
 import { normalizeList } from "@/lib/utils";
 import { toast } from "sonner";

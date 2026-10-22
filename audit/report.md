@@ -2,8 +2,11 @@
 
 **Project:** Real-Time Monitoring & Management System for Construction Projects  
 **Audit Date:** October 2026  
-**Backend Architecture:** Event-Driven, Multi-Database, 100% Docker-Ready  
-**Current State:** Fully Implemented, Seeded, Verified (32/32 Tests Passing)
+**Backend Architecture:** Event-Driven, Multi-Database, Docker planned (not yet containerised)  
+**Current State:** Implemented and seeded; 63 backend tests passing on isolated test databases (see README)
+
+
+> **Corrections (2026-10-23).** Earlier versions of this report overstated or misnamed several items; they are corrected below. File paths now match the code (`app/ingestion/mqtt_consumer.py`, `app/ingestion/video_stream_handler.py`, `app/workers/scheduler.py`, `app/db/repositories/incident_repo.py`); passwords use **bcrypt**, not Argon2id; the schema has **26** tables; Redis keys are `stream:ingest`, `latest:sensor:{id}`, `tokens:revoked:{jti}` and `rl:{client}:{route}`. The CV pipeline uses a **mock detector by default** and no PPE-trained weights are shipped. See the README section "Research use" for current limitations.
 
 ---
 
@@ -53,17 +56,17 @@ The backend has been designed and implemented in strict accordance with a 6-laye
 - **REST Endpoints**: Secure REST endpoints for third-party ERP integration, manual readings, and file attachments.
 
 ### Layer 2: Ingestion & Integration
-- **Async MQTT Ingestion Worker (`app/ingestion/mqtt_client.py`)**:
+- **Async MQTT Ingestion Worker (`app/ingestion/mqtt_consumer.py`)**:
   - Connects using `aiomqtt` with exponential backoff reconnection.
-  - Ingests telemetry from multiple sensor types: gas, noise, dust, vibration, temperature, humidity, structural tilt.
-  - Automatically publishes raw incoming payloads directly into Redis Stream `stream:sensor_readings`.
-- **Video Stream Handler (`app/ingestion/video_handler.py`)**:
+  - Ingests telemetry from multiple sensor types: gas, noise, dust, vibration, temperature, humidity, tilt (validated ranges per type).
+  - Automatically publishes raw incoming payloads directly into Redis Stream `stream:ingest`.
+- **Video Stream Handler (`app/ingestion/video_stream_handler.py`)**:
   - Background process that monitors registered cameras (`Camera` table).
   - Connects to RTSP/HTTP streams, decodes frames via OpenCV, and schedules inference.
   - Includes local mock video loop simulation for continuous development without live hardware cameras.
 - **Poison-Pill Protection & DLQ**:
   - Redis Stream consumer group tracking message retry counts.
-  - Poison-pill or malformed messages exceeding 3 retries are automatically routed to `stream:dlq` without blocking the pipeline.
+  - Invalid payloads are rejected to Mongo `rejected_messages`; messages that fail processing stay pending, are reclaimed with `XAUTOCLAIM` and retried, and move to `stream:dlq` after 3 deliveries.
 
 ### Layer 3: Processing & Analytics
 - **Telemetry Validation Service (`app/processing/validation.py`)**:
@@ -74,18 +77,18 @@ The backend has been designed and implemented in strict accordance with a 6-laye
   - Supports time-window duration tracking in Redis (e.g., condition must persist for 60 seconds before triggering).
   - Enforces per-rule cooldown locks (`dedup:alert:{rule_id}:{sensor_id}`) to prevent duplicate alert storms.
 - **Computer Vision PPE & Safety Detector (`app/cv/service.py`)**:
-  - Processes camera frames using YOLOv8 (with seamless mock fallback when weights are unavailable).
+  - Runs a mock detector by default (`CV_MODE=mock`, synthetic results labelled `detector: mock`); with `CV_MODE=yolo` it runs an Ultralytics model, which must be trained on PPE classes to be meaningful.
   - Detects persons, hard hats, safety vests, gloves, boots, and safety goggles.
   - Computes compliance flags, counts persons, identifies missing PPE gear, saves violation snapshots, and records detection logs in MongoDB `cv_detections`.
 - **Telemetry Persistence Service (`app/processing/telemetry.py`)**:
   - Writes time-series readings to MongoDB `sensor_readings`.
   - Atomically upserts latest sensor state into MongoDB `sensor_latest`.
-  - Updates Redis hot cache `sensor:latest:{id}` with TTL for sub-millisecond dashboard queries.
+  - Updates Redis hot cache `latest:sensor:{id}` with TTL for sub-millisecond dashboard queries.
   - Updates sensor heartbeat and battery levels in PostgreSQL `sensors` table.
-- **Analytics & 1-Minute KPI Rollup Worker (`app/workers/rollup_worker.py`)**:
+- **Analytics & 1-Minute KPI Rollup Worker (`app/workers/scheduler.py`)**:
   - Periodic background job that computes 1-minute site KPI aggregates (avg/max/min sensor readings, compliance rates, alert counts).
   - Uses PostgreSQL idempotent upserts (`ON CONFLICT (site_id, bucket_ts, kpi_name) DO UPDATE`).
-- **Incident Management Engine (`app/incidents/service.py`)**:
+- **Incident Management Engine (`app/db/repositories/incident_repo.py`)**:
   - Auto-creates formal incidents with formatted sequential codes (`INC-2026-0001`) when critical threshold violations or emergency alarms trigger.
   - Incident workflow tracking: `open` $\to$ `acknowledged` $\to$ `investigating` $\to$ `resolved` $\to$ `closed`.
 
@@ -101,11 +104,11 @@ The backend has been designed and implemented in strict accordance with a 6-laye
   - Camera metadata (`camera_frames_meta`).
   - Raw and rejected ingestion audit logs (`rejected_messages`).
 - **Redis 7**:
-  - Ingestion streams (`stream:sensor_readings`) and Dead Letter Queue (`stream:dlq`).
-  - Telemetry hot cache (`sensor:latest:{id}`).
+  - Ingestion stream (`stream:ingest`) and Dead Letter Queue (`stream:dlq`).
+  - Telemetry hot cache (`latest:sensor:{id}`).
   - Alert deduplication and cooldown locks (`dedup:alert:{rule}:{sensor}`).
-  - JWT token revocation blacklist (`revoked:token:{jti}`).
-  - Rate limiting sliding windows (`rate_limit:{ip}:{minute}`).
+  - JWT token revocation blacklist (`tokens:revoked:{jti}`).
+  - Rate limiting sliding windows (`rl:{client}:{route}`, sorted-set sliding window).
 - **Local / S3 Hybrid Object Storage Driver (`app/storage/`)**:
   - **Development Mode (`APP_ENV=development`)**: Stores all images, CV violation snapshots, and video recordings locally in `./data/storage`.
   - **Production Mode (`APP_ENV=production` or `STORAGE_BACKEND=s3`)**: Automatically routes all files to AWS S3 or MinIO.
@@ -127,7 +130,7 @@ The backend has been designed and implemented in strict accordance with a 6-laye
 
 ### Layer 6: API Gateway & Security
 - **Authentication & Authorization**:
-  - Password hashing with Argon2id.
+  - Password hashing with bcrypt.
   - JWT access tokens (15-min TTL) and refresh tokens (7-day TTL).
   - Immediate token revocation support via Redis.
   - Role-Based Access Control (RBAC) with guards: `ADMIN`, `PROJECT_MANAGER`, `SITE_ENGINEER`, `SAFETY_OFFICER`, `CONTRACTOR`, `VIEWER`.
@@ -162,7 +165,7 @@ The backend has been designed and implemented in strict accordance with a 6-laye
 
 | Database | Technology | Entities / Collections | Status |
 |---|---|---|:---:|
-| Relational Core | PostgreSQL 16 | 27 tables, Alembic migrations, FTS GIN indexes | **Operational & Seeded** |
+| Relational Core | PostgreSQL 16 | 26 tables, Alembic migrations, FTS GIN indexes | **Operational & Seeded** |
 | Time-Series & Logs | MongoDB 7 | `sensor_readings`, `sensor_latest`, `cv_detections`, `rejected_messages` | **Operational** |
 | Cache & Streams | Redis 7 | Streams, Dedup keys, Token blacklist, Rate limits | **Operational** |
 | Object Storage | Local / S3 | Local storage (`./data/storage`) in dev; S3 in prod | **Operational** |

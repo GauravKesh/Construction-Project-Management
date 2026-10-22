@@ -4,25 +4,19 @@ import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  FolderGit2,
   Building2,
   Plus,
-  Calendar,
   DollarSign,
   ArrowRight,
-  TrendingUp,
-  MapPin,
   CheckCircle2,
   Edit2,
   Trash2,
   Check,
   Loader2,
-  Clock,
-  Layers,
   Sparkles,
 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";

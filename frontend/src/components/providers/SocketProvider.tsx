@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useRef } from "react";
+import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import { io, Socket } from "socket.io-client";
 import { env } from "@/env";
 import { useLiveStore, SensorLiveReading, CVDetectionEvent, LiveAlertEvent } from "@/stores/liveStore";
@@ -21,6 +21,8 @@ const SocketContext = createContext<SocketContextValue>({
 
 export function SocketProvider({ children }: { children: React.ReactNode }) {
   const socketRef = useRef<Socket | null>(null);
+  // Exposed through context; a ref read during render would always hand consumers null
+  const [socket, setSocket] = useState<Socket | null>(null);
   const activeSiteId = useProjectStore((s) => s.activeSiteId);
   const queryClient = useQueryClient();
 
@@ -60,6 +62,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         });
 
         socketRef.current = socket;
+        setSocket(socket);
 
         socket.on("connect", () => {
           useLiveStore.getState().setConnectionStatus("connected");
@@ -146,6 +149,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         socketRef.current.disconnect();
         socketRef.current = null;
       }
+      setSocket(null);
       mockSocketSimulator.stop();
     };
   }, [activeSiteId, queryClient]);
@@ -164,7 +168,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <SocketContext.Provider value={{ socket: socketRef.current, ackAlert }}>
+    <SocketContext.Provider value={{ socket, ackAlert }}>
       {children}
     </SocketContext.Provider>
   );

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { hasRole, UserRole } from "@/lib/rbac";
+import { hasRole } from "@/lib/rbac";
 
 describe("RBAC authorization helper", () => {
   it("allows admin to perform any role action", () => {

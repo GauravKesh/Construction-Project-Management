@@ -11,36 +11,24 @@ import {
   Users,
   Truck,
   FileText,
-  Radio,
   Plus,
   Download,
-  CheckCircle2,
   AlertCircle,
-  Video,
-  PlugZap,
   Building2,
   MapPin,
   DollarSign,
   Edit3,
   Trash2,
-  ExternalLink,
   Upload,
-  Check,
   RefreshCw,
-  HardHat,
   Eye,
-  FileUp,
-  Clock,
   Sparkles,
   ClipboardList,
   Sliders,
-  ChevronRight,
-  TrendingUp,
-  Flame,
   Activity,
   History,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -49,7 +37,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { apiClient } from "@/lib/api/client";
 import { normalizeList } from "@/lib/utils";
 import { useProjectStore } from "@/stores/projectStore";
-import { ConnectSourceModal } from "@/components/devices/ConnectSourceModal";
 import { toast } from "sonner";
 import { NO_DATA, fmtNumber, fmtPct } from "@/lib/format";
 

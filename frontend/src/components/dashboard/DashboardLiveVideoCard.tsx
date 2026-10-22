@@ -11,14 +11,7 @@ import {
   Camera,
   PlugZap,
   Radio,
-  Layers,
-  Sparkles,
-  Settings2,
   CheckCircle2,
-  AlertTriangle,
-  RefreshCw,
-  Eye,
-  EyeOff,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,7 +24,6 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { StatusDot } from "@/components/common/StatusDot";
 import { toast } from "sonner";
 import { ALL_CONSTRUCTION_CAMERAS } from "@/lib/constants/cameras";
 

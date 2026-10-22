@@ -5,23 +5,15 @@ import dynamic from "next/dynamic";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   MapPin,
-  Layers,
   ShieldAlert,
   Plus,
-  Eye,
-  CheckCircle2,
-  HardHat,
   X,
   Radio,
   Video,
   Crosshair,
   RotateCcw,
-  Sparkles,
   Trash2,
   Loader2,
-  Activity,
-  Users,
-  Compass,
 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";

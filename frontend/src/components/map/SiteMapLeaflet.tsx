@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import "leaflet/dist/leaflet.css";
 import {
   MapContainer,
@@ -21,21 +21,14 @@ import {
   ParsedSensorNode,
   ParsedCameraNode,
 } from "@/lib/mapUtils";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Layers,
-  MapPin,
-  Eye,
   Radio,
   Video,
-  ShieldAlert,
-  Maximize2,
   Compass,
   CheckCircle2,
   Crosshair,
-  RotateCcw,
-  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import { NO_DATA, fmtNumber } from "@/lib/format";

@@ -2,21 +2,14 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import {
-  Video,
-  Eye,
   ShieldAlert,
   Play,
   Pause,
   Volume2,
   VolumeX,
-  Maximize2,
   Cpu,
-  Clock,
-  Sparkles,
-  Layers,
   MapPin,
   CheckCircle2,
-  AlertTriangle,
   X,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";

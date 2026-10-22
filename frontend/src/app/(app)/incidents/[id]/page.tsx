@@ -6,21 +6,16 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft,
-  AlertTriangle,
   User,
   MapPin,
-  Calendar,
-  Clock,
   Send,
   Paperclip,
-  CheckCircle2,
   FileText,
   Download,
   ShieldCheck,
 } from "lucide-react";
-import { PageHeader } from "@/components/common/PageHeader";
 import { SeverityBadge } from "@/components/common/SeverityBadge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { apiClient } from "@/lib/api/client";

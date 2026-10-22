@@ -1,18 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 import {
-  Radio,
   Activity,
   Battery,
-  Wifi,
   Clock,
   ShieldAlert,
-  AlertTriangle,
-  CheckCircle2,
-  TrendingUp,
-  TrendingDown,
-  Minus,
   MapPin,
   X,
   Gauge,

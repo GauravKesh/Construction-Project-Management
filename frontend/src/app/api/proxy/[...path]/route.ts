@@ -44,7 +44,7 @@ async function handleProxy(req: NextRequest, { params }: { params: Promise<{ pat
   const targetUrl = `${env.API_BASE_URL}/api/v1/${path}${search}`;
 
   const cookieStore = await cookies();
-  let accessToken = cookieStore.get("bt_access_token")?.value;
+  const accessToken = cookieStore.get("bt_access_token")?.value;
   const refreshToken = cookieStore.get("bt_refresh_token")?.value;
 
   const headers: Record<string, string> = {};

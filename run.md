@@ -48,7 +48,7 @@ To launch the complete server and all background workers (API Gateway, Stream Wo
 
 ## 🧪 Run Tests
 
-To run the automated test suite (32/32 tests passing):
+To run the automated test suite (63 backend tests; uses isolated `*_test` databases, never your dev data):
 ```bash
 cd backend
 source .venv/bin/activate

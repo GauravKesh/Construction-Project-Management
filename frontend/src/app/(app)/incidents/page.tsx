@@ -4,26 +4,16 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  AlertTriangle,
   Plus,
   Kanban,
   Table as TableIcon,
   Search,
-  Filter,
-  User,
-  MapPin,
-  Calendar,
-  CheckCircle2,
   ArrowRight,
   RefreshCw,
-  ShieldAlert,
-  AlertCircle,
-  Eye,
-  SlidersHorizontal,
 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { SeverityBadge } from "@/components/common/SeverityBadge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";

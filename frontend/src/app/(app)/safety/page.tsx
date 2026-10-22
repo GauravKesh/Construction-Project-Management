@@ -1,18 +1,13 @@
 "use client";
 
 import React, { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  HardHat,
   ShieldCheck,
-  AlertTriangle,
   Upload,
-  Check,
-  X,
   Sliders,
   Image as ImageIcon,
   Sparkles,
-  Eye,
   CheckCircle2,
 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -22,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useProjectStore } from "@/stores/projectStore";
 import { apiClient } from "@/lib/api/client";
 import { normalizeList } from "@/lib/utils";

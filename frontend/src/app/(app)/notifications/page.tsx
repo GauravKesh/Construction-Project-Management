@@ -2,70 +2,55 @@
 
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  Bell,
-  CheckCircle2,
-  Send,
-  Smartphone,
-  Mail,
-  Sliders,
-  ShieldAlert,
-} from "lucide-react";
+import { CheckCircle2, Send } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { apiClient } from "@/lib/api/client";
+import { normalizeList } from "@/lib/utils";
+import { useAuthStore } from "@/stores/authStore";
 import { toast } from "sonner";
 
 export default function NotificationsPage() {
   const queryClient = useQueryClient();
 
+  const userId = useAuthStore((st) => st.user?.id);
   const [pushEnabled, setPushEnabled] = useState(false);
-  const [emailAlerts, setEmailAlerts] = useState(true);
-  const [smsAlerts, setSmsAlerts] = useState(false);
 
-  const [notifications, setNotifications] = useState([
-    {
-      id: "n1",
-      title: "Critical Acoustic Threshold Breached",
-      message: "Noise sensor at Zone B recorded 84.1 dB exceeding environmental limit.",
-      read: false,
-      ts: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-    },
-    {
-      id: "n2",
-      title: "PPE Violation Flagged on North Gate CCTV",
-      message: "Worker detected without mandatory safety helmet in vehicle pathway.",
-      read: false,
-      ts: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
-    },
-    {
-      id: "n3",
-      title: "System Ready Health Check Verified",
-      message: "All 6 backend microservices and databases communicating with sub-second latency.",
-      read: true,
-      ts: new Date(Date.now() - 1000 * 3600 * 4).toISOString(),
-    },
-  ]);
+  const { data: notificationsData } = useQuery<any>({
+    queryKey: ["notifications"],
+    queryFn: () => apiClient.get<any>("/api/v1/notifications", { params: { page_size: 100 } }),
+  });
+  const notifications = normalizeList<any>(notificationsData);
 
-  const handleMarkAllRead = () => {
-    setNotifications(notifications.map((n) => ({ ...n, read: true })));
-    toast.success("All notifications marked as read");
-  };
+  const prefsKey = ["notification-preferences", userId];
+  const { data: prefs } = useQuery<any>({
+    queryKey: prefsKey,
+    queryFn: () => apiClient.get<any>(`/api/v1/users/${userId}/notification-preferences`),
+    enabled: Boolean(userId),
+  });
+  const updatePrefs = useMutation({
+    mutationFn: (patch: Record<string, boolean>) =>
+      apiClient.put<any>(`/api/v1/users/${userId}/notification-preferences`, patch),
+    onSuccess: (data) => queryClient.setQueryData(prefsKey, data),
+    onError: (err: any) => toast.error(err.message || "Failed to save preference"),
+  });
 
-  const handleSendTest = () => {
-    const testItem = {
-      id: `n-${Date.now()}`,
-      title: "Test In-App Notification Push",
-      message: "BuildTrack Web Push & WebSocket signaling channel verified operational.",
-      read: false,
-      ts: new Date().toISOString(),
-    };
-    setNotifications([testItem, ...notifications]);
-    toast.info(testItem.title, { description: testItem.message });
-  };
+  const markAllRead = useMutation({
+    mutationFn: () => apiClient.post<any>("/api/v1/notifications/read-all"),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      toast.success(res?.message || "All notifications marked as read");
+    },
+  });
+
+  const sendTest = useMutation({
+    mutationFn: () => apiClient.post<any>("/api/v1/notifications/test", undefined, { params: { channel: "console" } }),
+    onSuccess: (res) => toast.info(res?.message || "Test notification dispatched"),
+    onError: (err: any) => toast.error(err.message || "Test dispatch failed"),
+  });
 
   const handleEnablePush = async () => {
     if (typeof window !== "undefined" && "Notification" in window) {
@@ -77,8 +62,7 @@ export default function NotificationsPage() {
         toast.warning("Web Push permission was dismissed or denied");
       }
     } else {
-      toast.info("Browser notifications simulated");
-      setPushEnabled(true);
+      toast.warning("This browser does not support notifications");
     }
   };
 
@@ -88,11 +72,11 @@ export default function NotificationsPage() {
         title="Notification Center & Alert Dispatch"
         description="Configure desktop push notifications, multi-channel dispatch routing, and review recent broadcast logs."
       >
-        <Button variant="outline" size="sm" onClick={handleSendTest} className="gap-1.5 border-zinc-700">
+        <Button variant="outline" size="sm" onClick={() => sendTest.mutate()} className="gap-1.5 border-zinc-700">
           <Send className="h-3.5 w-3.5 text-amber-500" />
-          Send Test Notification
+          Test Dispatch (console)
         </Button>
-        <Button variant="amber" size="sm" onClick={handleMarkAllRead} className="font-bold">
+        <Button variant="amber" size="sm" onClick={() => markAllRead.mutate()} className="font-bold">
           <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
           Mark All Read
         </Button>
@@ -107,11 +91,12 @@ export default function NotificationsPage() {
             </h3>
 
             <div className="space-y-2">
-              {notifications.map((n) => (
+              {notifications.length === 0 && <p className="text-xs text-zinc-500">No notifications.</p>}
+              {notifications.map((n: any) => (
                 <div
                   key={n.id}
                   className={`p-3.5 rounded-xl border text-xs space-y-1 transition-all ${
-                    n.read
+                    n.read_at
                       ? "border-zinc-200 dark:border-zinc-800/60 bg-zinc-50 dark:bg-zinc-950/40 opacity-70"
                       : "border-amber-500/40 bg-amber-500/5 dark:bg-zinc-950"
                   }`}
@@ -119,10 +104,10 @@ export default function NotificationsPage() {
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-zinc-900 dark:text-zinc-100">{n.title}</span>
                     <span className="text-[10px] font-mono text-zinc-500">
-                      {new Date(n.ts).toLocaleTimeString()}
+                      {new Date(n.created_at).toLocaleString()}
                     </span>
                   </div>
-                  <p className="text-zinc-600 dark:text-zinc-400 text-[11px]">{n.message}</p>
+                  <p className="text-zinc-600 dark:text-zinc-400 text-[11px]">{n.body}</p>
                 </div>
               ))}
             </div>
@@ -158,7 +143,11 @@ export default function NotificationsPage() {
                   <span className="font-semibold text-zinc-800 dark:text-zinc-200 block">Email Safety Digest</span>
                   <span className="text-[11px] text-zinc-500">Daily summary of incidents & violations</span>
                 </div>
-                <Switch checked={emailAlerts} onCheckedChange={setEmailAlerts} />
+                <Switch
+                  checked={Boolean(prefs?.email_enabled)}
+                  disabled={!prefs || updatePrefs.isPending}
+                  onCheckedChange={(v) => updatePrefs.mutate({ email_enabled: v })}
+                />
               </div>
 
               <div className="flex items-center justify-between pt-3 border-t border-zinc-200 dark:border-zinc-800">
@@ -166,7 +155,11 @@ export default function NotificationsPage() {
                   <span className="font-semibold text-zinc-800 dark:text-zinc-200 block">SMS Critical Broadcast</span>
                   <span className="text-[11px] text-zinc-500">High hazard evacuation alerts</span>
                 </div>
-                <Switch checked={smsAlerts} onCheckedChange={setSmsAlerts} />
+                <Switch
+                  checked={Boolean(prefs?.sms_enabled)}
+                  disabled={!prefs || updatePrefs.isPending}
+                  onCheckedChange={(v) => updatePrefs.mutate({ sms_enabled: v })}
+                />
               </div>
             </div>
           </Card>

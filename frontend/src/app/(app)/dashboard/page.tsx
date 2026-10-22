@@ -1,14 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import {
-  ShieldAlert,
   Users,
   HardHat,
   Radio,
-  Wind,
   Thermometer,
   Droplets,
   AlertTriangle,
@@ -16,7 +14,6 @@ import {
   CheckCircle2,
   RefreshCw,
   Bell,
-  Zap,
 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { KpiCard } from "@/components/common/KpiCard";

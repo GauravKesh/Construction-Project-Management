@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from app.db.models.incident import IncidentStatus
 from app.db.models.rule import AlertSeverity
 
@@ -55,6 +55,7 @@ class IncidentUpdateResponse(BaseModel):
 class IncidentAttachmentResponse(BaseModel):
     id: uuid.UUID
     incident_id: uuid.UUID
+    file_key: Optional[str] = Field(None, exclude=True)  # used to sign download_url; not exposed
     file_name: str
     file_size: int
     content_type: str

@@ -71,50 +71,8 @@ export default function RulesPage() {
     queryFn: () => apiClient.get<any>("/api/v1/rules"),
   });
 
-  const DEFAULT_RULES: RuleItem[] = [
-    {
-      id: "rule-pm25-01",
-      name: "Excavation Dust Hazard Ceiling",
-      description: "Trigger environmental warning if airborne particulate matter PM2.5 exceeds 65 µg/m³ for 10 minutes",
-      sensor_type: "pm25",
-      operator: ">",
-      threshold: 65,
-      unit: "µg/m³",
-      duration_minutes: 10,
-      severity: "critical",
-      is_active: true,
-      action: "create_alert_and_notify",
-    },
-    {
-      id: "rule-noise-02",
-      name: "Demolition Noise Buffer Zone",
-      description: "Flag perimeter noise exceedance if acoustic sound level spikes past 85 dB for more than 5 minutes",
-      sensor_type: "noise",
-      operator: ">",
-      threshold: 85,
-      unit: "dB",
-      duration_minutes: 5,
-      severity: "warning",
-      is_active: true,
-      action: "create_alert_and_notify",
-    },
-    {
-      id: "rule-wind-03",
-      name: "Tower Crane High Wind Cutoff",
-      description: "Halt crane lifts if gust anemometer records wind speed in excess of 45 km/h for 2 minutes",
-      sensor_type: "wind_speed",
-      operator: ">",
-      threshold: 45,
-      unit: "km/h",
-      duration_minutes: 2,
-      severity: "critical",
-      is_active: true,
-      action: "halt_crane_lift",
-    },
-  ];
-
   const fetchedRules = normalizeList<RuleItem>(rulesData);
-  const rules = Array.isArray(fetchedRules) && fetchedRules.length > 0 ? fetchedRules : DEFAULT_RULES;
+  const rules = Array.isArray(fetchedRules) ? fetchedRules : [];
 
   const handleToggleRule = async (id: string, currentState: boolean) => {
     try {

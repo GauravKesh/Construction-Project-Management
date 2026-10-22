@@ -5,7 +5,7 @@
     "advertise_host": "localhost"
   },
   "mqtt": {
-    "enabled": true,
+    "enabled": false,
     "host": "localhost",
     "port": 1883,
     "username": null,
@@ -13,7 +13,8 @@
   },
   "buildtrack": {
     "api": "http://localhost:8000",
-    "site_id": null
+    "site_id": null,
+    "mode": "pull"
   },
   "seed": 2026,
   "labels_csv": null,

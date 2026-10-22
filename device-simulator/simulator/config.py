@@ -5,8 +5,9 @@ from typing import Any, Dict
 
 DEFAULTS: Dict[str, Any] = {
     "server": {"host": "127.0.0.1", "port": 8090, "advertise_host": "localhost"},
-    "mqtt": {"enabled": True, "host": "localhost", "port": 1883, "username": None, "password": None},
-    "buildtrack": {"api": "http://localhost:8000", "site_id": None},
+    "mqtt": {"enabled": False, "host": "localhost", "port": 1883, "username": None, "password": None},
+    # mode "pull": BuildTrack connects to this server's endpoints; "push": publish over MQTT
+    "buildtrack": {"api": "http://localhost:8000", "site_id": None, "mode": "pull"},
     "seed": 2026,
     "labels_csv": None,
     # Every video file in this folder becomes a camera feed (named after the file).

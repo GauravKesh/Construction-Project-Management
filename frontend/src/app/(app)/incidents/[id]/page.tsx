@@ -32,65 +32,30 @@ export default function IncidentDetailPage() {
   const incidentId = params.id as string;
 
   const [commentText, setCommentText] = useState("");
-  const [comments, setComments] = useState<any[]>([
-    {
-      id: "c1",
-      author: "Vikram Mehta",
-      role: "Field Engineer",
-      text: "Containment boom deployed around hydraulic pump. Soil contamination was prevented; absorbent pads placed.",
-      created_at: new Date(Date.now() - 1000 * 3600 * 3).toISOString(),
-    },
-    {
-      id: "c2",
-      author: "Priya Sharma",
-      role: "Safety Officer",
-      text: "Inspected containment on site. Maintenance subcontractor scheduled to replace ruptured hose assembly by 16:00.",
-      created_at: new Date(Date.now() - 1000 * 3600 * 1).toISOString(),
-    },
-  ]);
+  const [posting, setPosting] = useState(false);
 
-  // Fetch incident info
-  const { data: incident, refetch } = useQuery({
+  // Fetch incident (includes its update/comment log and attachments)
+  const { data: incident, refetch, isError } = useQuery({
     queryKey: ["incident-detail", incidentId],
-    queryFn: async () => {
-      try {
-        return await apiClient.get<any>(`/api/v1/incidents/${incidentId}`);
-      } catch {
-        // Fallback demo mock
-        return {
-          id: incidentId,
-          title: "Hydraulic Fluid Spill near Crane 01 Staging Bay",
-          description: "Approximately 15 liters of high-pressure hydraulic fluid leaked from boom cylinder during crane routine maintenance. Immediate containment deployed; hazard isolated.",
-          status: "under_investigation",
-          severity: "medium",
-          assigned_to: "Vikram Mehta (Field Engineer)",
-          reported_by: "safety@buildtrack.com",
-          location: "Crane Staging Bay 3 (Zone B)",
-          created_at: new Date(Date.now() - 1000 * 3600 * 6).toISOString(),
-          updated_at: new Date(Date.now() - 1000 * 3600 * 1).toISOString(),
-          attachments: [
-            { id: "att-1", name: "spill_containment_site_photo.jpg", size: "2.4 MB" },
-            { id: "att-2", name: "crane_hydraulic_incident_log.pdf", size: "480 KB" },
-          ],
-        };
-      }
-    },
+    queryFn: () => apiClient.get<any>(`/api/v1/incidents/${incidentId}`),
+    retry: false,
   });
+  const comments: any[] = incident?.updates ?? [];
 
-  const handlePostComment = (e: React.FormEvent) => {
+  const handlePostComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!commentText.trim()) return;
-
-    const newComment = {
-      id: `c-${Date.now()}`,
-      author: "Gaurav Sharma",
-      role: "Admin / Safety Supervisor",
-      text: commentText,
-      created_at: new Date().toISOString(),
-    };
-    setComments([...comments, newComment]);
-    setCommentText("");
-    toast.success("Corrective action note posted to timeline");
+    setPosting(true);
+    try {
+      await apiClient.post(`/api/v1/incidents/${incidentId}/updates`, { comment: commentText.trim() });
+      setCommentText("");
+      await refetch();
+      toast.success("Note added to incident log");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to add note");
+    } finally {
+      setPosting(false);
+    }
   };
 
   const handleStatusChange = async (newStatus: string) => {
@@ -106,10 +71,21 @@ export default function IncidentDetailPage() {
     }
   };
 
+  if (isError) {
+    return (
+      <div className="py-20 text-center font-mono text-xs text-zinc-500">
+        Incident not found or could not be loaded.{" "}
+        <Link href="/incidents" className="text-amber-500 hover:underline">
+          Back to incidents
+        </Link>
+      </div>
+    );
+  }
+
   if (!incident) {
     return (
       <div className="py-20 text-center font-mono text-xs text-zinc-500">
-        Loading incident dossier...
+        Loading incident...
       </div>
     );
   }
@@ -181,16 +157,21 @@ export default function IncidentDetailPage() {
                 <div key={c.id} className="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-zinc-800 dark:text-zinc-200">{c.author}</span>
-                      <Badge variant="outline" className="text-[10px] text-amber-600 dark:text-amber-400 border-amber-500/30">
-                        {c.role}
-                      </Badge>
+                      <span className="font-bold text-zinc-800 dark:text-zinc-200 font-mono">
+                        {c.user_id ? `User ${String(c.user_id).slice(0, 8)}` : "System"}
+                      </span>
+                      {c.status_to && (
+                        <Badge variant="outline" className="text-[10px] text-amber-600 dark:text-amber-400 border-amber-500/30">
+                          {c.status_from ? `${c.status_from} → ` : ""}
+                          {c.status_to}
+                        </Badge>
+                      )}
                     </div>
                     <span className="text-[10px] font-mono text-zinc-500">
-                      {new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {new Date(c.created_at).toLocaleString()}
                     </span>
                   </div>
-                  <p className="text-xs text-zinc-700 dark:text-zinc-300">{c.text}</p>
+                  <p className="text-xs text-zinc-700 dark:text-zinc-300">{c.comment}</p>
                 </div>
               ))}
             </div>
@@ -225,21 +206,21 @@ export default function IncidentDetailPage() {
                   <MapPin className="h-3.5 w-3.5 text-zinc-400" />
                   Location:
                 </span>
-                <span className="text-zinc-800 dark:text-zinc-200">{incident.location}</span>
+                <span className="text-zinc-800 dark:text-zinc-200 font-mono">{incident.zone_id ?? "—"}</span>
               </div>
               <div className="flex items-center justify-between py-1 border-b border-zinc-200 dark:border-zinc-800">
                 <span className="text-zinc-500 flex items-center gap-1.5">
                   <User className="h-3.5 w-3.5 text-zinc-400" />
                   Assignee:
                 </span>
-                <span className="text-zinc-800 dark:text-zinc-200">{incident.assigned_to}</span>
+                <span className="text-zinc-800 dark:text-zinc-200 font-mono">{incident.assigned_to ?? "Unassigned"}</span>
               </div>
               <div className="flex items-center justify-between py-1 border-b border-zinc-200 dark:border-zinc-800">
                 <span className="text-zinc-500 flex items-center gap-1.5">
                   <ShieldCheck className="h-3.5 w-3.5 text-zinc-400" />
                   Reported By:
                 </span>
-                <span className="text-zinc-800 dark:text-zinc-200">{incident.reported_by}</span>
+                <span className="text-zinc-800 dark:text-zinc-200 font-mono">{incident.reported_by ?? "System (automatic)"}</span>
               </div>
             </div>
           </Card>
@@ -258,12 +239,13 @@ export default function IncidentDetailPage() {
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <FileText className="h-4 w-4 text-amber-500 shrink-0" />
-                    <span className="text-zinc-800 dark:text-zinc-200 truncate">{file.name}</span>
+                    <span className="text-zinc-800 dark:text-zinc-200 truncate">{file.file_name}</span>
                   </div>
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => toast.success(`Downloading ${file.name}`)}
+                    onClick={() => file.download_url && window.open(`/api/proxy${file.download_url}`, "_blank", "noopener")}
+                    disabled={!file.download_url}
                     className="h-7 w-7 text-zinc-400 hover:text-white"
                   >
                     <Download className="h-3.5 w-3.5" />

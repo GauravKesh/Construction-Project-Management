@@ -135,6 +135,16 @@ cleanup() {
 
 trap cleanup SIGINT SIGTERM EXIT
 
+# Check if port 8000 is already occupied by a previous BuildTrack instance
+if check_port "127.0.0.1" 8000; then
+    echo ">> Port 8000 is occupied. Terminating previous instance for clean restart..."
+    EXISTING_PIDS=$(lsof -ti :8000 2>/dev/null || true)
+    if [ -n "${EXISTING_PIDS}" ]; then
+        kill -9 ${EXISTING_PIDS} 2>/dev/null || true
+        sleep 1
+    fi
+fi
+
 # 6. Launch All Server Roles
 echo ">> [1/4] Starting REST API Gateway & Socket.IO Server (/live)..."
 "${PYTHON}" -m app.cli api &

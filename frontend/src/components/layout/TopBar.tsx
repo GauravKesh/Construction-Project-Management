@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useRouter } from "next/navigation";
-import { Search, Maximize, Bell, LogOut, User, Building2, MapPin, ChevronDown, Menu, PlugZap } from "lucide-react";
+import { Search, Maximize, Bell, LogOut, User, Building2, MapPin, ChevronDown, Menu, PlugZap, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -23,6 +23,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api/client";
 import { normalizeList } from "@/lib/utils";
 import { toast } from "sonner";
+import { soundManager } from "@/lib/audio/soundEffects";
 
 const iconButton = "h-9 w-9 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300";
 
@@ -37,6 +38,21 @@ export function TopBar() {
   const connectionStatus = useLiveStore((s) => s.connectionStatus);
   const liveAlerts = useLiveStore((s) => s.liveAlerts);
   const setMobileNavOpen = useUiStore((s) => s.setMobileNavOpen);
+  const [audioEnabled, setAudioEnabled] = React.useState(true);
+
+  React.useEffect(() => {
+    setAudioEnabled(soundManager.isEnabled());
+    const handleAudioChange = () => setAudioEnabled(soundManager.isEnabled());
+    window.addEventListener("buildtrack:audio_settings_changed", handleAudioChange);
+    return () => window.removeEventListener("buildtrack:audio_settings_changed", handleAudioChange);
+  }, []);
+
+  const toggleAudio = () => {
+    const next = !audioEnabled;
+    soundManager.setEnabled(next);
+    setAudioEnabled(next);
+    toast.info(next ? "Notification audio alerts enabled" : "Notification audio alerts muted");
+  };
 
   const { data: projectsData } = useQuery<any>({
     queryKey: ["projects"],
@@ -174,6 +190,21 @@ export function TopBar() {
         </div>
 
         <ThemeToggle />
+
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={toggleAudio}
+          title={audioEnabled ? "Mute alert chimes" : "Unmute alert chimes"}
+          className={iconButton}
+          aria-label={audioEnabled ? "Mute alert sounds" : "Unmute alert sounds"}
+        >
+          {audioEnabled ? (
+            <Volume2 className="h-4 w-4" />
+          ) : (
+            <VolumeX className="h-4 w-4 text-red-500" />
+          )}
+        </Button>
 
         <Button
           variant="outline"

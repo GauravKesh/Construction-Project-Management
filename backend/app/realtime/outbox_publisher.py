@@ -19,14 +19,14 @@ class OutboxPublisher:
 
         while self._running:
             try:
-                await self.process_pending_outbox()
-                await asyncio.sleep(0.3)
+                count = await self.process_pending_outbox()
+                await asyncio.sleep(0.1 if count > 0 else 1.0)
             except asyncio.CancelledError:
                 logger.info("Outbox publisher cancelled.")
                 break
             except Exception as e:
                 logger.error(f"Error in outbox publisher loop: {e}", exc_info=True)
-                await asyncio.sleep(1.0)
+                await asyncio.sleep(2.0)
 
     async def process_pending_outbox(self) -> int:
         processed_count = 0
@@ -107,6 +107,8 @@ class OutboxPublisher:
 
             if processed_count > 0:
                 await session.commit()
+            else:
+                await session.rollback()
 
         return processed_count
 

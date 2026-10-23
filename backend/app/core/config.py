@@ -60,6 +60,7 @@ class Settings(BaseSettings):
     DATABASE_SYNC_URL: Optional[str] = None
     DB_POOL_SIZE: int = 20
     DB_MAX_OVERFLOW: int = 10
+    DB_ECHO: bool = False
 
     @property
     def async_database_url(self) -> str:

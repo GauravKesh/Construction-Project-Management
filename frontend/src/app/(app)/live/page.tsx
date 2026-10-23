@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Activity,
   Video,
@@ -13,6 +13,7 @@ import {
   Play,
   Pause,
   Sparkles,
+  Trash2,
 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { StatusDot } from "@/components/common/StatusDot";
@@ -68,6 +69,19 @@ export default function LiveMonitoringPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState<string>("all");
   const [gridPreset, setGridPreset] = useState<"1x1" | "2x2" | "3x3" | "4x4">("4x4");
+  const queryClient = useQueryClient();
+
+  const handleDisconnectCamera = async (cameraId: string, name: string) => {
+    if (!confirm(`Disconnect camera "${name}" from this site?`)) return;
+    try {
+      await apiClient.delete(`/api/v1/cameras/${cameraId}`);
+      toast.success(`Camera "${name}" disconnected`);
+      await queryClient.invalidateQueries({ queryKey: ["cameras", activeSiteId] });
+      await queryClient.invalidateQueries({ queryKey: ["sites", activeSiteId] });
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || "Failed to disconnect camera");
+    }
+  };
 
   // Fetch sensors
   const { data: sensorsData } = useQuery<any>({
@@ -88,26 +102,23 @@ export default function LiveMonitoringPage() {
   const sensors = normalizeList<SensorItem>(sensorsData);
   const fetchedCameras = normalizeList<CameraItem>(camerasData);
 
-  // Guarantee all 8 available construction video streams are present for monitoring
-  const cameras: CameraItem[] = ALL_CONSTRUCTION_CAMERAS.map((preset, idx) => {
-    const matched = fetchedCameras.find(
-      (c) =>
-        c.id === preset.id ||
-        c.name.toLowerCase().includes(preset.camera_code.toLowerCase())
-    );
-    return {
-      id: preset.id,
-      camera_code: preset.camera_code,
-      name: matched?.name || preset.name,
-      location: matched?.location || preset.location,
-      zone: preset.zone,
-      rtsp_url: preset.url,
-      status: matched?.status || "active",
-      fps: matched?.fps || preset.fps,
-      resolution: preset.resolution,
-      is_cv_enabled: matched?.is_cv_enabled ?? true,
-    };
-  });
+  // Use only connected cameras from backend API / device simulator
+  const cameras: CameraItem[] = fetchedCameras.map((c: any) => ({
+    id: c.id,
+    camera_code: c.camera_code || `CAM-${c.id.slice(0, 4)}`,
+    name: c.name || `Camera ${c.camera_code}`,
+    location:
+      c.zone_name ||
+      (c.location_geojson?.coordinates
+        ? `Coordinates [${c.location_geojson.coordinates[1].toFixed(4)}, ${c.location_geojson.coordinates[0].toFixed(4)}]`
+        : "Live Hardware Source"),
+    zone: c.zone_name || "Active Worksite Zone",
+    rtsp_url: c.stream_url || `/api/v1/cameras/${c.id}/stream`,
+    status: c.status || "active",
+    fps: c.fps || 2,
+    resolution: c.resolution || "HD 1080p",
+    is_cv_enabled: c.is_cv_enabled ?? true,
+  }));
 
   const sensorTypes = Array.from(new Set(sensors.map((s) => s.type)));
 
@@ -266,26 +277,46 @@ export default function LiveMonitoringPage() {
 
         {/* Tab 2: Camera Wall */}
         <TabsContent value="cameras" className="space-y-4 pt-2">
-          <div
-            className={`grid gap-4 ${
-              gridPreset === "1x1"
-                ? "grid-cols-1"
-                : gridPreset === "2x2"
-                ? "grid-cols-1 sm:grid-cols-2"
-                : gridPreset === "3x3"
-                ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-                : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
-            }`}
-          >
-            {cameras.map((camera) => (
-              <CameraFeedTile
-                key={camera.id}
-                camera={camera}
-                status={cameraStatus[camera.id]}
-                detection={latestDetections[camera.id]}
+          {cameras.length === 0 ? (
+            <div className="flex flex-col items-center justify-center p-12 text-center rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
+              <div className="p-3 rounded-full bg-amber-500/10 text-amber-500 mb-3">
+                <Video className="h-6 w-6" />
+              </div>
+              <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 text-sm">No Live Cameras Connected</h3>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-sm mt-1 mb-4">
+                Only cameras connected via RTSP, HTTP/MJPEG (e.g. device simulator on port 8090), or registered on this site are shown.
+              </p>
+              <ConnectSourceModal
+                trigger={
+                  <Button size="sm" variant="amber" className="text-xs">
+                    Connect Camera Source
+                  </Button>
+                }
               />
-            ))}
-          </div>
+            </div>
+          ) : (
+            <div
+              className={`grid gap-4 ${
+                gridPreset === "1x1"
+                  ? "grid-cols-1"
+                  : gridPreset === "2x2" || cameras.length <= 2
+                  ? "grid-cols-1 sm:grid-cols-2"
+                  : gridPreset === "3x3"
+                  ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+                  : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
+              }`}
+            >
+              {cameras.map((camera) => (
+                <CameraFeedTile
+                  key={camera.id}
+                  camera={camera}
+                  status={cameraStatus[camera.id]}
+                  detection={latestDetections[camera.id]}
+                  onDisconnect={() => handleDisconnectCamera(camera.id, camera.name)}
+                />
+              ))}
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 
@@ -374,15 +405,29 @@ function CameraFeedTile({
   camera,
   status,
   detection,
+  onDisconnect,
 }: {
   camera: CameraItem;
   status?: { status: string; fps: number };
   detection?: any;
+  onDisconnect?: () => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const imgRef = useRef<HTMLImageElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(true);
+  const [streamError, setStreamError] = useState(false);
+
+  const isMjpegStream = Boolean(
+    camera.rtsp_url &&
+    (camera.rtsp_url.includes(".mjpg") ||
+     camera.rtsp_url.includes("/stream") ||
+     camera.rtsp_url.includes(":8090") ||
+     camera.rtsp_url.startsWith("http://") ||
+     camera.rtsp_url.startsWith("https://")) &&
+    !camera.rtsp_url.endsWith(".mp4")
+  );
 
   // Render CV detections onto HTML5 Canvas overlay
   useEffect(() => {
@@ -423,19 +468,33 @@ function CameraFeedTile({
   }, [detection]);
 
   const togglePlay = () => {
-    if (!videoRef.current) return;
-    if (isPlaying) {
-      videoRef.current.pause();
-      setIsPlaying(false);
-    } else {
-      videoRef.current.play().catch(() => {});
-      setIsPlaying(true);
+    if (isMjpegStream) {
+      setIsPlaying((prev) => !prev);
+    } else if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause();
+        setIsPlaying(false);
+      } else {
+        videoRef.current.play().catch(() => {});
+        setIsPlaying(true);
+      }
     }
   };
 
   const handleCaptureSnapshot = () => {
-    if (videoRef.current) {
-      const c = document.createElement("canvas");
+    const c = document.createElement("canvas");
+    if (isMjpegStream && imgRef.current) {
+      c.width = imgRef.current.naturalWidth || 960;
+      c.height = imgRef.current.naturalHeight || 540;
+      const ctx = c.getContext("2d");
+      if (ctx) {
+        ctx.drawImage(imgRef.current, 0, 0, c.width, c.height);
+        const a = document.createElement("a");
+        a.href = c.toDataURL("image/jpeg");
+        a.download = `${camera.camera_code || camera.id}-snapshot-${Date.now()}.jpg`;
+        a.click();
+      }
+    } else if (videoRef.current) {
       c.width = videoRef.current.videoWidth || 1280;
       c.height = videoRef.current.videoHeight || 720;
       const ctx = c.getContext("2d");
@@ -477,21 +536,50 @@ function CameraFeedTile({
           <Badge variant="warning" className="text-[9px] px-1 py-0 font-mono">
             AI CV
           </Badge>
+          {onDisconnect && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDisconnect();
+              }}
+              title="Disconnect / Remove camera"
+              className="text-zinc-400 hover:text-red-500 transition-colors p-0.5 rounded cursor-pointer ml-1"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
       </div>
 
       {/* Video Stream + CV Canvas Overlay */}
       <div className="relative aspect-video w-full bg-zinc-950 overflow-hidden flex items-center justify-center">
-        {/* Real Construction Camera Video Frame */}
-        <video
-          ref={videoRef}
-          src={camera.rtsp_url}
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="absolute inset-0 w-full h-full object-cover"
-        />
+        {/* Live Video / MJPEG Stream Feed */}
+        {isMjpegStream ? (
+          isPlaying ? (
+            <img
+              ref={imgRef}
+              src={streamError ? `/api/v1/cameras/${camera.id}/snapshot` : camera.rtsp_url}
+              alt={camera.name}
+              onError={() => setStreamError(true)}
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center bg-zinc-900 text-zinc-400 text-xs font-mono">
+              Stream Paused
+            </div>
+          )
+        ) : (
+          <video
+            ref={videoRef}
+            src={camera.rtsp_url}
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        )}
 
         {/* Canvas bounding box overlay */}
         <canvas

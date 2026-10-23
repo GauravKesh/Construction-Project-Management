@@ -40,6 +40,18 @@ export function CameraLiveFeedCard({
   const detection = useLiveStore((st) => st.latestDetections[camera.id]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const [streamError, setStreamError] = useState(false);
+
+  const isMjpeg = Boolean(
+    camera.video_url &&
+    (camera.video_url.includes(".mjpg") ||
+     camera.video_url.includes("/stream") ||
+     camera.video_url.includes(":8090") ||
+     camera.video_url.startsWith("http://") ||
+     camera.video_url.startsWith("https://")) &&
+    !camera.video_url.endsWith(".mp4")
+  );
 
   // Real-time time ticker
   useEffect(() => {
@@ -58,14 +70,18 @@ export function CameraLiveFeedCard({
 
   // Video source handling
   useEffect(() => {
-    if (videoRef.current) {
+    if (!isMjpeg && videoRef.current) {
       videoRef.current.src = camera.video_url;
       videoRef.current.play().catch(() => {});
       setIsPlaying(true);
     }
-  }, [camera.video_url]);
+  }, [camera.video_url, isMjpeg]);
 
   const togglePlay = () => {
+    if (isMjpeg) {
+      setIsPlaying(!isPlaying);
+      return;
+    }
     if (!videoRef.current) return;
     if (isPlaying) {
       videoRef.current.pause();
@@ -109,14 +125,28 @@ export function CameraLiveFeedCard({
 
       <CardContent className="p-4 space-y-3.5">
         {/* Live Video Player Surface */}
-        <div className="relative aspect-video w-full rounded-lg overflow-hidden bg-black shadow-inner border border-zinc-800">
-          <video
-            ref={videoRef}
-            playsInline
-            loop
-            muted={isMuted}
-            className="w-full h-full object-cover"
-          />
+        <div className="relative aspect-video w-full rounded-lg overflow-hidden bg-black shadow-inner border border-zinc-800 flex items-center justify-center">
+          {isMjpeg ? (
+            isPlaying ? (
+              <img
+                ref={imgRef}
+                src={streamError ? `/api/v1/cameras/${camera.id}/snapshot` : camera.video_url}
+                alt={camera.name}
+                onError={() => setStreamError(true)}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="text-zinc-500 font-mono text-xs">Stream Paused</div>
+            )
+          ) : (
+            <video
+              ref={videoRef}
+              playsInline
+              loop
+              muted={isMuted}
+              className="w-full h-full object-cover"
+            />
+          )}
 
           {/* Top Video HUD Info */}
           <div className="absolute top-2 left-2 right-2 flex items-center justify-between pointer-events-none text-[10px] font-mono font-bold text-white drop-shadow-md">

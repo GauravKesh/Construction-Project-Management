@@ -45,6 +45,8 @@ from app.storage.base import StorageDriver
 
 router = APIRouter(prefix="", tags=["Cameras"])
 
+CAMERA_OPERATORS = [UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.SAFETY_OFFICER, UserRole.SITE_ENGINEER]
+
 
 @router.get("/sites/{site_id}/cameras", response_model=PaginatedResponse[CameraResponse])
 async def list_cameras_for_site(
@@ -67,7 +69,7 @@ async def list_cameras_for_site(
 async def create_camera(
     site_id: uuid.UUID,
     req: CameraCreate,
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.SAFETY_OFFICER])),
+    current_user: User = Depends(require_roles(CAMERA_OPERATORS)),
     camera_repo: CameraRepository = Depends(get_camera_repo),
     audit_repo: AuditRepository = Depends(get_audit_repo),
 ):
@@ -129,7 +131,7 @@ async def update_camera(
 @router.delete("/cameras/{camera_id}", response_model=StatusMessage)
 async def delete_camera(
     camera_id: uuid.UUID,
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.PROJECT_MANAGER])),
+    current_user: User = Depends(require_roles(CAMERA_OPERATORS)),
     camera_repo: CameraRepository = Depends(get_camera_repo),
     audit_repo: AuditRepository = Depends(get_audit_repo),
 ):
@@ -153,9 +155,6 @@ async def delete_camera(
         user_id=current_user.id,
     )
     return StatusMessage(status="ok", message="Camera soft deleted successfully")
-
-
-CAMERA_OPERATORS = [UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.SAFETY_OFFICER, UserRole.SITE_ENGINEER]
 
 
 def _check_audio_url(url: Optional[str]) -> None:

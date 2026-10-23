@@ -1,5 +1,6 @@
 import { useLiveStore } from "@/stores/liveStore";
 import { toast } from "sonner";
+import { playNotificationSound } from "@/lib/audio/soundEffects";
 
 class MockSocketSimulator {
   private timer: ReturnType<typeof setInterval> | null = null;
@@ -114,6 +115,7 @@ class MockSocketSimulator {
           ts: nowIso,
         };
         useLiveStore.getState().addLiveAlert(mockAlert);
+        playNotificationSound(mockAlert.severity);
         toast.warning(mockAlert.message, {
           description: `Severity: ${mockAlert.severity.toUpperCase()}`,
         });

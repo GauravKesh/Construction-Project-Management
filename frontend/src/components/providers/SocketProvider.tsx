@@ -8,6 +8,7 @@ import { useProjectStore } from "@/stores/projectStore";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { mockSocketSimulator } from "@/mocks/mockSocketSimulator";
+import { playNotificationSound, soundManager } from "@/lib/audio/soundEffects";
 
 interface SocketContextValue {
   socket: Socket | null;
@@ -100,9 +101,24 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
           if (alert) {
             useLiveStore.getState().addLiveAlert(alert);
             queryClient.invalidateQueries({ queryKey: ["alerts"] });
-            toast.warning(alert.message, {
-              description: `New ${alert.severity?.toUpperCase()} alert triggered`,
-            });
+
+            // Distinct sound based on alert severity
+            if (alert.severity === "critical") {
+              playNotificationSound("critical");
+              toast.error(alert.message, {
+                description: `CRITICAL ALERT: ${alert.message}`,
+              });
+            } else if (alert.severity === "warning") {
+              playNotificationSound("warning");
+              toast.warning(alert.message, {
+                description: `WARNING: ${alert.message}`,
+              });
+            } else {
+              playNotificationSound("info");
+              toast.info(alert.message, {
+                description: `Info Alert Triggered`,
+              });
+            }
           }
         });
 
@@ -112,6 +128,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
         socket.on("incident:new", () => {
           queryClient.invalidateQueries({ queryKey: ["incidents"] });
+          playNotificationSound("critical");
           toast.error("New safety incident reported!");
         });
 
@@ -122,6 +139,9 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         socket.on("cv:detection", (event: { data: CVDetectionEvent }) => {
           if (event?.data) {
             useLiveStore.getState().updateCVDetection(event.data);
+            if (!event.data.compliant || event.data.detections?.some((d) => d.is_violation)) {
+              soundManager.playViolationWarning();
+            }
           }
         });
 
@@ -131,8 +151,18 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
           }
         });
 
-        socket.on("notification:new", (event: { data: { title: string; message: string } }) => {
+        socket.on("notification:new", (event: { data: { title: string; message: string; type?: string; severity?: string } }) => {
           if (event?.data) {
+            const soundType =
+              event.data.type === "critical" || event.data.severity === "critical"
+                ? "critical"
+                : event.data.type === "warning" || event.data.severity === "warning"
+                ? "warning"
+                : event.data.type === "success" || event.data.severity === "success"
+                ? "success"
+                : "info";
+
+            playNotificationSound(soundType);
             toast.info(event.data.title, { description: event.data.message });
             queryClient.invalidateQueries({ queryKey: ["notifications"] });
           }

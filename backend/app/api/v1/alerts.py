@@ -21,6 +21,7 @@ router = APIRouter(prefix="", tags=["Alerts"])
 async def list_alerts(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=500),
+    limit: Optional[int] = Query(None, ge=1, le=500, description="Alias for page_size"),
     site_id: Optional[uuid.UUID] = None,
     status: Optional[AlertStatus] = None,
     severity: Optional[AlertSeverity] = None,
@@ -29,10 +30,11 @@ async def list_alerts(
     current_user: User = Depends(get_current_user),
     alert_repo: AlertRepository = Depends(get_alert_repo),
 ):
-    skip = (page - 1) * page_size
+    effective_page_size = limit if limit is not None else page_size
+    skip = (page - 1) * effective_page_size
     alerts = await alert_repo.list_alerts(
         skip=skip,
-        limit=page_size,
+        limit=effective_page_size,
         site_id=site_id,
         status=status,
         severity=severity,
@@ -40,8 +42,8 @@ async def list_alerts(
         to_ts=to_ts,
     )
     total = len(alerts)
-    pages = math.ceil(total / page_size) if total > 0 else 1
-    return PaginatedResponse(items=alerts, total=total, page=page, page_size=page_size, pages=pages)
+    pages = math.ceil(total / effective_page_size) if total > 0 else 1
+    return PaginatedResponse(items=alerts, total=total, page=page, page_size=effective_page_size, pages=pages)
 
 
 @router.get("/alerts/stats", response_model=AlertStatsResponse)

@@ -337,6 +337,13 @@ async def seed_data():
         await session.commit()
         logger.info("Demo data seed completed successfully!")
 
+    # Seed rich analytics and telemetry data
+    try:
+        from scripts.seed_analytics import seed_analytics_data
+        await seed_analytics_data()
+    except Exception as e:
+        logger.error(f"Failed to run seed_analytics_data: {e}")
+
 
 if __name__ == "__main__":
     asyncio.run(seed_data())

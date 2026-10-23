@@ -1,14 +1,17 @@
 # BuildTrack — Run Instructions
 
-## 🚀 The 1-Command Server Startup
-
-To launch the complete server and all background workers (API Gateway, Stream Worker, MQTT Ingestion Consumer, and Video CV Handler), run this single command from the project root:
-
+### macOS / Linux:
 ```bash
 ./start.sh
 ```
+*(Or with sensor simulator: `./start.sh --with-sim`)*
 
-*(Or to run with the live IoT sensor simulator enabled: `./start.sh --with-sim`)*
+### Windows:
+Double-click `start.bat` in the project root, or run in Command Prompt / Terminal:
+```cmd
+start.bat
+```
+*(Or in PowerShell: `.\start.ps1` or `.\start.ps1 -WithSim`)*
 
 ---
 

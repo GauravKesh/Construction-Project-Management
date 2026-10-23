@@ -233,6 +233,7 @@ async def get_sensor_latest_reading(
     return doc or {"sensor_id": str(sensor_id), "status": "no_data_yet"}
 
 
+@router.get("/sensors/{sensor_id}/telemetry", response_model=List[ReadingRangeItem])
 @router.get("/sensors/{sensor_id}/readings", response_model=List[ReadingRangeItem])
 async def get_sensor_readings(
     sensor_id: uuid.UUID,

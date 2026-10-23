@@ -3,8 +3,8 @@ import json
 import math
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from typing import Any, Dict, List, Optional, Union
+from fastapi import APIRouter, Body, Depends, Header, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials
 from app.core.config import settings
 from app.core.dependencies import (
@@ -48,6 +48,7 @@ async def list_sensors_for_site(
     status: Optional[str] = None,
     current_user: User = Depends(get_current_user),
     sensor_repo: SensorRepository = Depends(get_sensor_repo),
+    telemetry_repo: TelemetryRepository = Depends(get_telemetry_repo),
 ):
     await check_site_access(site_id, current_user)
     skip = (page - 1) * page_size
@@ -59,9 +60,27 @@ async def list_sensors_for_site(
         zone_id=zone_id,
         status=status,
     )
+
+    # Fetch latest telemetry from MongoDB sensor_latest to enrich response
+    latest_readings = await telemetry_repo.get_site_latest_readings(str(site_id))
+    latest_map = {r["sensor_id"]: r for r in latest_readings if "sensor_id" in r}
+
+    items = []
+    for s in sensors:
+        resp = SensorResponse.model_validate(s)
+        latest_doc = latest_map.get(str(s.id)) or latest_map.get(s.sensor_code)
+        if latest_doc:
+            resp.current_value = latest_doc.get("value")
+            resp.battery = latest_doc.get("battery", s.battery_level)
+            if latest_doc.get("ts") and not resp.last_seen_at:
+                resp.last_seen_at = latest_doc.get("ts")
+        else:
+            resp.battery = s.battery_level
+        items.append(resp)
+
     total = len(sensors)
     pages = math.ceil(total / page_size) if total > 0 else 1
-    return PaginatedResponse(items=sensors, total=total, page=page, page_size=page_size, pages=pages)
+    return PaginatedResponse(items=items, total=total, page=page, page_size=page_size, pages=pages)
 
 
 SENSOR_OPERATORS = [UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.SITE_ENGINEER]
@@ -265,16 +284,15 @@ async def get_site_latest_telemetry(
 
 @router.post("/telemetry/ingest", response_model=StatusMessage)
 async def http_telemetry_ingest(
-    payload: TelemetryIngestPayload,
+    payload: Union[TelemetryIngestPayload, List[TelemetryIngestPayload]] = Body(...),
     x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security_scheme),
 ):
     """
-    HTTP fallback ingestion endpoint for IoT sensors / field gateways.
-    Pushes reading into Redis Stream 'stream:ingest' just like the MQTT consumer.
-
-    Requires either the device key (X-API-Key == INGEST_API_KEY) or a valid user
-    access token, so the telemetry dataset cannot be written to anonymously.
+    HTTP ingestion endpoint for IoT sensors / field gateways.
+    Pushes readings into Redis Stream 'stream:ingest' just like the MQTT consumer,
+    which persists directly into MongoDB time-series 'sensor_readings', upserts 'sensor_latest',
+    and updates PostgreSQL sensor telemetry heartbeats.
     """
     key_ok = bool(
         x_api_key
@@ -292,20 +310,26 @@ async def http_telemetry_ingest(
         # Raises 401 for a missing, invalid, revoked or non-access token
         await get_current_user_payload(credentials)
 
+    items = payload if isinstance(payload, list) else [payload]
     r = get_redis_client()
-    msg_data = {
-        "sensor_id": payload.sensor_id,
-        "site_id": payload.site_id,
-        "type": payload.type,
-        "value": str(payload.value),
-        "unit": payload.unit,
-        "ts": (payload.ts or datetime.now(timezone.utc)).isoformat(),
-        "battery": str(payload.battery) if payload.battery is not None else "",
-        "zone_id": payload.zone_id or "",
-        "location": json.dumps(payload.location) if payload.location else "",
-    }
-    await r.xadd(KEY_STREAM_INGEST, msg_data)
-    return StatusMessage(status="ok", message="Sensor reading queued for ingestion")
+    for item in items:
+        msg_data = {
+            "sensor_id": str(item.sensor_id),
+            "site_id": str(item.site_id),
+            "type": str(item.type),
+            "value": str(item.value),
+            "unit": str(item.unit),
+            "ts": (item.ts or datetime.now(timezone.utc)).isoformat(),
+            "battery": str(item.battery) if item.battery is not None else "",
+            "zone_id": str(item.zone_id) if item.zone_id else "",
+            "location": json.dumps(item.location) if item.location else "",
+        }
+        await r.xadd(KEY_STREAM_INGEST, msg_data)
+
+    return StatusMessage(
+        status="ok",
+        message=f"{len(items)} sensor reading(s) queued and saved to database"
+    )
 
 
 @router.get("/sensors/{sensor_id}/connection", response_model=SensorConnectionInfo)

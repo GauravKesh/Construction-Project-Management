@@ -22,6 +22,7 @@ import {
   ArrowUpRight,
   Gauge,
   SlidersHorizontal,
+  Database,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -184,6 +185,7 @@ export default function LiveMonitoringPage() {
   const latestDetections = useLiveStore((s) => s.latestDetections);
 
   const [isMounted, setIsMounted] = useState(false);
+  const [isSavingDb, setIsSavingDb] = useState(false);
   const [activeTab, setActiveTab] = useState<"sensors" | "cameras">("sensors");
   const [sensorViewMode, setSensorViewMode] = useState<"cards" | "charts">("cards");
   const [selectedSensor, setSelectedSensor] = useState<SensorItem | null>(null);
@@ -714,9 +716,12 @@ export default function LiveMonitoringPage() {
                             Live Stream Oscillogram
                           </span>
                         </div>
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-                          {sensorLatest[selectedSensor.id] ? "Online 2.4GHz" : "Buffer Ready"}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                            <Database className="h-2.5 w-2.5 text-emerald-400" />
+                            DB Synced
+                          </span>
+                        </div>
                       </div>
 
                       <div className="h-48 w-full mt-2">
@@ -770,17 +775,49 @@ export default function LiveMonitoringPage() {
                       </div>
                     </div>
 
-                    {/* Historical Analytics Navigation Link */}
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={() => router.push(`/analytics?sensorId=${selectedSensor.id}`)}
-                      className="w-full mt-4 bg-amber-500 hover:bg-amber-600 text-zinc-950 font-semibold gap-2 shadow-md shadow-amber-500/10 text-xs"
-                    >
-                      <TrendingUp className="h-3.5 w-3.5" />
-                      Open Deep Historical Analytics & Heatmaps
-                      <ArrowUpRight className="h-3.5 w-3.5 ml-auto" />
-                    </Button>
+                    {/* Database & Historical Analytics Action Links */}
+                    <div className="grid grid-cols-2 gap-2 mt-4">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={isSavingDb}
+                        onClick={async () => {
+                          setIsSavingDb(true);
+                          try {
+                            await apiClient.post("/api/v1/telemetry/ingest", {
+                              sensor_id: selectedSensor.id,
+                              site_id: activeSiteId,
+                              type: selectedSensor.type,
+                              value: currentVal,
+                              unit: selectedSensor.unit,
+                              battery: sensorLatest[selectedSensor.id]?.battery ?? selectedSensor.battery,
+                              ts: new Date().toISOString(),
+                            });
+                            toast.success(`Saved telemetry sample (${currentVal} ${selectedSensor.unit}) into database!`);
+                            await queryClient.invalidateQueries({ queryKey: ["sensors", activeSiteId] });
+                          } catch (err: any) {
+                            toast.error(err?.response?.data?.detail || "Failed to persist reading to database");
+                          } finally {
+                            setIsSavingDb(false);
+                          }
+                        }}
+                        className="text-xs font-semibold gap-1.5 border-emerald-500/40 text-emerald-500 hover:bg-emerald-500/10 cursor-pointer"
+                      >
+                        <Database className="h-3.5 w-3.5 text-emerald-500" />
+                        <span>{isSavingDb ? "Saving..." : "Save to DB"}</span>
+                      </Button>
+
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => router.push(`/analytics?sensorId=${selectedSensor.id}`)}
+                        className="bg-amber-500 hover:bg-amber-600 text-zinc-950 font-semibold gap-1 text-xs shadow-md shadow-amber-500/10 cursor-pointer"
+                      >
+                        <TrendingUp className="h-3.5 w-3.5" />
+                        <span>Analytics</span>
+                        <ArrowUpRight className="h-3.5 w-3.5 ml-auto" />
+                      </Button>
+                    </div>
                   </>
                 );
               })()}

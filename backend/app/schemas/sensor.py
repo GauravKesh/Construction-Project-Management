@@ -83,6 +83,8 @@ class SensorResponse(BaseModel):
     status: str
     battery_level: Optional[float] = None
     last_seen_at: Optional[datetime] = None
+    current_value: Optional[float] = None
+    battery: Optional[float] = None
     created_at: datetime
     updated_at: datetime
 

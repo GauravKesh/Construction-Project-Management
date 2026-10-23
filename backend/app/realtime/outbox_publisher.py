@@ -69,9 +69,9 @@ class OutboxPublisher:
                             site_id=payload.get("site_id"),
                             payload=payload,
                         )
-                    elif event_type == "ppe:violation":
+                    elif event_type in ("ppe:violation", "machinery:proximity_hazard"):
                         await emit_live_event(
-                            event_name="ppe:violation",
+                            event_name=event_type,
                             site_id=payload.get("site_id"),
                             payload=payload,
                         )

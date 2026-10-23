@@ -14,6 +14,8 @@ class LocalStorageDriver(StorageDriver):
     def _resolve_path(self, bucket: str, key: str) -> Path:
         # Sanitize to prevent path traversal
         clean_key = os.path.normpath(key).lstrip("/")
+        if clean_key.startswith(f"{bucket}/"):
+            clean_key = clean_key[len(bucket) + 1 :]
         return self.base_path / bucket / clean_key
 
     async def init_storage(self) -> None:

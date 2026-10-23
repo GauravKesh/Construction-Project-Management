@@ -18,6 +18,8 @@ class CVDetectionResponse(BaseModel):
     persons_count: int
     compliant: bool
     missing_ppe: List[str]
+    equipment_counts: Optional[Dict[str, int]] = None
+    machinery_hazards: Optional[List[Dict[str, Any]]] = None
     snapshot_key: Optional[str] = None
     snapshot_url: Optional[str] = None
     detections: List[Dict[str, Any]]
@@ -56,6 +58,8 @@ class CVAnalyzeResponse(BaseModel):
     violating_persons: int = 0
     detector: Optional[str] = None  # "mock", "mock-fallback" or "yolo:<weights>"
     missing_ppe: List[str]
+    equipment_counts: Optional[Dict[str, int]] = None
+    machinery_hazards: Optional[List[Dict[str, Any]]] = None
     detections: List[Dict[str, Any]]
     snapshot_key: Optional[str] = None
     snapshot_url: Optional[str] = None

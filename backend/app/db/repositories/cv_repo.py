@@ -20,6 +20,8 @@ class CVRepository:
         missing_ppe: List[str],
         snapshot_key: Optional[str] = None,
         violating_persons: Optional[int] = None,
+        equipment_counts: Optional[Dict[str, int]] = None,
+        machinery_hazards: Optional[List[Dict[str, Any]]] = None,
         detector: Optional[str] = None,
     ) -> Dict[str, Any]:
         doc = {
@@ -32,6 +34,9 @@ class CVRepository:
             "missing_ppe": missing_ppe,
             "snapshot_key": snapshot_key,
             "violating_persons": violating_persons,
+            "equipment_counts": equipment_counts or {},
+            "machinery_hazards": machinery_hazards or [],
+            "has_machinery_hazard": bool(machinery_hazards),
             # Which detector produced this record (e.g. "mock", "yolo:<weights>"), so
             # synthetic and model-based detections can never be mixed up in analysis
             "detector": detector,

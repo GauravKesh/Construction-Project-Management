@@ -430,6 +430,7 @@ function CameraFeedTile({
   );
 
   // Render CV detections onto HTML5 Canvas overlay
+  // Render CV detections onto HTML5 Canvas overlay
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -440,30 +441,87 @@ function CameraFeedTile({
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     if (detection?.detections && Array.isArray(detection.detections)) {
-      detection.detections.forEach((item: CVDetectionItem) => {
-        const [ymin, xmin, ymax, xmax] = item.bbox;
-        const x = xmin * canvas.width;
-        const y = ymin * canvas.height;
-        const w = (xmax - xmin) * canvas.width;
-        const h = (ymax - ymin) * canvas.height;
+      const machineryClasses = new Set([
+        "excavator", "crane", "dump_truck", "truck", "loader", "bulldozer", "forklift", "wheel_loader", "digger"
+      ]);
 
-        const isViolation = item.is_violation || item.class_name.includes("no_");
+      detection.detections.forEach((item: CVDetectionItem) => {
+        const [b0, b1, b2, b3] = item.bbox || [0, 0, 0, 0];
+        const isNormalized = b0 <= 1.0 && b2 <= 1.0 && b1 <= 1.0 && b3 <= 1.0;
+
+        let x: number, y: number, w: number, h: number;
+        if (isNormalized) {
+          x = b0 * canvas.width;
+          y = b1 * canvas.height;
+          w = (b2 - b0) * canvas.width;
+          h = (b3 - b1) * canvas.height;
+        } else {
+          // Pixel coordinates from source resolution (auto-scale to canvas dimensions)
+          const srcW = Math.max(1280, Math.max(b0, b2));
+          const srcH = Math.max(720, Math.max(b1, b3));
+          x = (b0 / srcW) * canvas.width;
+          y = (b1 / srcH) * canvas.height;
+          w = ((b2 - b0) / srcW) * canvas.width;
+          h = ((b3 - b1) / srcH) * canvas.height;
+        }
+
+        const cName = item.class_name.toLowerCase();
+        const isViolation = item.is_violation || cName.includes("no_") || cName.includes("missing");
+        const isMachinery = machineryClasses.has(cName);
+        const isPPE = cName.includes("helmet") || cName.includes("hardhat") || cName.includes("vest") || cName.includes("glove");
+
+        // Color coding
+        let strokeColor = "#10b981"; // Emerald for compliant
+        let badgeBg = "rgba(16, 185, 129, 0.85)";
+        if (isViolation) {
+          strokeColor = "#ef4444"; // Red for violations
+          badgeBg = "rgba(239, 68, 68, 0.85)";
+        } else if (isMachinery) {
+          strokeColor = "#0284c7"; // Sky Blue for machinery
+          badgeBg = "rgba(2, 132, 199, 0.85)";
+        } else if (isPPE) {
+          strokeColor = "#f59e0b"; // Amber for PPE items
+          badgeBg = "rgba(245, 158, 11, 0.85)";
+        }
 
         ctx.lineWidth = 2;
-        ctx.strokeStyle = isViolation ? "#ef4444" : "#10b981";
+        ctx.strokeStyle = strokeColor;
         ctx.strokeRect(x, y, w, h);
 
-        // Label background
-        ctx.fillStyle = isViolation ? "rgba(239, 68, 68, 0.85)" : "rgba(16, 185, 129, 0.85)";
+        // Label background & text
         const labelText = `${item.class_name.toUpperCase()} ${(item.confidence * 100).toFixed(0)}%`;
-        ctx.font = "bold 10px monospace";
+        ctx.font = "bold 9px monospace";
         const textWidth = ctx.measureText(labelText).width;
-        ctx.fillRect(x, Math.max(0, y - 16), textWidth + 8, 16);
+        ctx.fillStyle = badgeBg;
+        ctx.fillRect(x, Math.max(0, y - 14), textWidth + 6, 14);
 
-        // Label text
         ctx.fillStyle = "#ffffff";
-        ctx.fillText(labelText, x + 4, Math.max(12, y - 4));
+        ctx.fillText(labelText, x + 3, Math.max(10, y - 3));
       });
+
+      // Draw Proximity Hazard connection lines if active
+      if (detection.machinery_hazards && detection.machinery_hazards.length > 0) {
+        detection.machinery_hazards.forEach((h: any) => {
+          const pb = h.person_bbox || [];
+          const mb = h.machinery_bbox || [];
+          if (pb.length === 4 && mb.length === 4) {
+            const isNorm = pb[0] <= 1.0;
+            const px = isNorm ? ((pb[0] + pb[2]) / 2) * canvas.width : (((pb[0] + pb[2]) / 2) / 1280) * canvas.width;
+            const py = isNorm ? ((pb[1] + pb[3]) / 2) * canvas.height : (((pb[1] + pb[3]) / 2) / 720) * canvas.height;
+            const mx = isNorm ? ((mb[0] + mb[2]) / 2) * canvas.width : (((mb[0] + mb[2]) / 2) / 1280) * canvas.width;
+            const my = isNorm ? ((mb[1] + mb[3]) / 2) * canvas.height : (((mb[1] + mb[3]) / 2) / 720) * canvas.height;
+
+            ctx.beginPath();
+            ctx.setLineDash([4, 4]);
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = "#ef4444";
+            ctx.moveTo(px, py);
+            ctx.lineTo(mx, my);
+            ctx.stroke();
+            ctx.setLineDash([]);
+          }
+        });
+      }
     }
   }, [detection]);
 
@@ -610,13 +668,23 @@ function CameraFeedTile({
 
       {/* Footer Controls */}
       <div className="p-2.5 bg-zinc-50 dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 flex items-center justify-between text-xs">
-        <span className="text-[10px] text-zinc-600 dark:text-zinc-400 font-mono">
+        <div className="flex items-center gap-2 flex-wrap text-[10px] font-mono">
+          {detection?.machinery_hazards && detection.machinery_hazards.length > 0 && (
+            <span className="text-red-600 dark:text-red-400 font-black animate-pulse bg-red-100 dark:bg-red-950/60 px-1.5 py-0.5 rounded">
+              🚨 Machinery Hazard ({detection.machinery_hazards.length})
+            </span>
+          )}
           {detection?.compliant === false ? (
-            <span className="text-red-500 dark:text-red-400 font-bold">⚠️ PPE Violation Flagged</span>
+            <span className="text-amber-600 dark:text-amber-400 font-bold">⚠️ PPE Violation</span>
           ) : (
             <span className="text-emerald-600 dark:text-emerald-400 font-medium">✓ PPE Compliant</span>
           )}
-        </span>
+          {detection?.equipment_counts && Object.keys(detection.equipment_counts).length > 0 && (
+            <span className="text-sky-600 dark:text-sky-400 font-semibold bg-sky-50 dark:bg-sky-950/40 px-1.5 py-0.5 rounded">
+              🚜 {Object.entries(detection.equipment_counts).map(([k, v]) => `${k} (${v})`).join(", ")}
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"

@@ -32,21 +32,35 @@ class CVService:
             logger.warning(f"PPE alert cooldown check failed, raising alert anyway: {e}")
             return True
 
+    async def _claim_machinery_alert_slot(self, camera_id: str) -> bool:
+        cooldown = settings.MACHINERY_ALERT_COOLDOWN_SECONDS
+        if cooldown <= 0:
+            return True
+        try:
+            r = get_redis_client()
+            return bool(await r.set(f"dedup:machinery:{camera_id}", "1", nx=True, ex=cooldown))
+        except Exception as e:
+            logger.warning(f"Machinery hazard cooldown check failed, raising alert anyway: {e}")
+            return True
+
     async def process_frame(
         self,
         camera_id: str,
         site_id: str,
         frame_bytes: Optional[bytes] = None,
+        frame_ndarray: Optional[Any] = None,
         simulate_violation: Optional[bool] = None,
         persist: bool = True,
     ) -> Dict[str, Any]:
         """
         Runs CV detection on frame and coordinates storage, alerts, and outbox.
+        Supports both raw JPEG frame_bytes and decoded frame_ndarray.
         With persist=False (ad-hoc analysis) nothing is stored and no alert is raised.
         """
         ts = datetime.now(timezone.utc)
         result = await cv_detector.detect(
             image_bytes=frame_bytes,
+            frame_ndarray=frame_ndarray,
             simulate_violation=simulate_violation,
         )
         detections = result["detections"]
@@ -54,6 +68,9 @@ class CVService:
         missing_ppe = result["missing_ppe"]
         annotated_bytes = result["annotated_bytes"]
         persons_count = result["persons_count"]
+        equipment_counts = result.get("equipment_counts", {})
+        machinery_hazards = result.get("machinery_hazards", [])
+        has_machinery_hazard = result.get("has_machinery_hazard", False)
         detector = result["detector"]
 
         if result["inference_seconds"] > 0:
@@ -68,6 +85,9 @@ class CVService:
                 "violating_persons": result["violating_persons"],
                 "compliant": compliant,
                 "missing_ppe": missing_ppe,
+                "equipment_counts": equipment_counts,
+                "machinery_hazards": machinery_hazards,
+                "has_machinery_hazard": has_machinery_hazard,
                 "snapshot_key": None,
                 "snapshot_url": None,
                 "detections": detections,
@@ -76,8 +96,8 @@ class CVService:
             }
 
         snapshot_key = None
-        if not compliant:
-            # Save annotated snapshot to object storage
+        # Save annotated snapshot to object storage if any safety or proximity violation detected
+        if (not compliant or has_machinery_hazard) and annotated_bytes:
             file_name = f"{site_id}/{uuid.uuid4()}.jpg"
             snapshot_key = await self.storage.save_file(
                 bucket="cv-snapshots",
@@ -86,7 +106,7 @@ class CVService:
                 content_type="image/jpeg",
             )
 
-        # Record detection in MongoDB
+        # Record detection in MongoDB with equipment counts and hazards
         doc = await self.cv_repo.insert_detection(
             site_id=site_id,
             camera_id=camera_id,
@@ -97,18 +117,25 @@ class CVService:
             missing_ppe=missing_ppe,
             snapshot_key=snapshot_key,
             violating_persons=result["violating_persons"],
+            equipment_counts=equipment_counts,
+            machinery_hazards=machinery_hazards,
             detector=detector,
         )
 
-        # If PPE violation, create Alert and Outbox event (at most one per camera per cooldown)
-        if not compliant and await self._claim_alert_slot(camera_id):
+        site_uuid = None
+        camera_uuid = None
+        try:
+            site_uuid = uuid.UUID(site_id) if site_id else None
+            camera_uuid = uuid.UUID(camera_id) if camera_id else None
+        except Exception:
+            pass
+
+        # 1. PPE Violation Alert (WARNING severity, with cooldown)
+        if not compliant and await self._claim_alert_slot(camera_id) and site_uuid:
             async with AsyncSessionLocal() as session:
                 try:
                     alert_repo = AlertRepository(session)
                     outbox_repo = OutboxRepository(session)
-
-                    site_uuid = uuid.UUID(site_id)
-                    camera_uuid = uuid.UUID(camera_id) if camera_id else None
 
                     missing_str = ", ".join(missing_ppe)
                     msg = f"PPE Violation detected on camera {camera_id}: {missing_str}"
@@ -132,7 +159,7 @@ class CVService:
                     session.add(alert)
                     await session.flush()
 
-                    # Outbox event
+                    # Specific PPE violation event
                     await outbox_repo.add_event(
                         event_type="ppe:violation",
                         aggregate_type="alert",
@@ -147,10 +174,119 @@ class CVService:
                             "ts": ts.isoformat(),
                         },
                     )
+                    # Universal alert:new event for live UI banner & soundboard trigger
+                    await outbox_repo.add_event(
+                        event_type="alert:new",
+                        aggregate_type="alert",
+                        aggregate_id=str(alert.id),
+                        payload={
+                            "alert_id": str(alert.id),
+                            "site_id": site_id,
+                            "camera_id": camera_id,
+                            "severity": "warning",
+                            "alert_type": "ppe_violation",
+                            "message": msg,
+                            "reading_value": None,
+                            "ts": ts.isoformat(),
+                        },
+                    )
                     await session.commit()
                 except Exception as e:
                     await session.rollback()
                     logger.error(f"Failed to record PPE violation alert: {e}")
+
+        # 2. Person Near Machinery Proximity Hazard (CRITICAL severity, with cooldown)
+        if has_machinery_hazard and await self._claim_machinery_alert_slot(camera_id) and site_uuid:
+            async with AsyncSessionLocal() as session:
+                try:
+                    alert_repo = AlertRepository(session)
+                    outbox_repo = OutboxRepository(session)
+
+                    types_str = ", ".join(sorted({h["machinery_type"] for h in machinery_hazards}))
+                    msg = f"CRITICAL: {len(machinery_hazards)} worker(s) dangerously close to active machinery ({types_str}) on camera {camera_id}"
+
+                    alert = Alert(
+                        site_id=site_uuid,
+                        camera_id=camera_uuid,
+                        alert_type="person_near_machinery",
+                        severity=AlertSeverity.CRITICAL,
+                        status=AlertStatus.ACTIVE,
+                        message=msg,
+                        details={
+                            "machinery_hazards": machinery_hazards,
+                            "equipment_counts": equipment_counts,
+                            "persons_count": persons_count,
+                            "camera_id": camera_id,
+                            "snapshot_key": snapshot_key,
+                            "detector": detector,
+                        },
+                    )
+                    session.add(alert)
+                    await session.flush()
+
+                    # Specific machinery hazard event
+                    await outbox_repo.add_event(
+                        event_type="machinery:proximity_hazard",
+                        aggregate_type="alert",
+                        aggregate_id=str(alert.id),
+                        payload={
+                            "alert_id": str(alert.id),
+                            "site_id": site_id,
+                            "camera_id": camera_id,
+                            "severity": "critical",
+                            "machinery_types": sorted({h["machinery_type"] for h in machinery_hazards}),
+                            "hazards_count": len(machinery_hazards),
+                            "snapshot_key": snapshot_key,
+                            "ts": ts.isoformat(),
+                        },
+                    )
+                    # Universal alert:new event for live UI banner & soundboard trigger
+                    await outbox_repo.add_event(
+                        event_type="alert:new",
+                        aggregate_type="alert",
+                        aggregate_id=str(alert.id),
+                        payload={
+                            "alert_id": str(alert.id),
+                            "site_id": site_id,
+                            "camera_id": camera_id,
+                            "severity": "critical",
+                            "alert_type": "person_near_machinery",
+                            "message": msg,
+                            "reading_value": None,
+                            "ts": ts.isoformat(),
+                        },
+                    )
+                    await session.commit()
+                except Exception as e:
+                    await session.rollback()
+                    logger.error(f"Failed to record person near machinery hazard alert: {e}")
+
+        # 3. Publish real-time cv:detection event to outbox for live video canvas overlays
+        if site_uuid and camera_uuid:
+            async with AsyncSessionLocal() as session:
+                try:
+                    outbox_repo = OutboxRepository(session)
+                    await outbox_repo.add_event(
+                        event_type="cv:detection",
+                        aggregate_type="camera",
+                        aggregate_id=camera_id,
+                        payload={
+                            "camera_id": camera_id,
+                            "site_id": site_id,
+                            "compliant": compliant,
+                            "persons_count": persons_count,
+                            "violating_persons": result["violating_persons"],
+                            "equipment_counts": equipment_counts,
+                            "machinery_hazards": machinery_hazards,
+                            "detections": detections,
+                            "detector": detector,
+                            "ts": ts.isoformat(),
+                        },
+                    )
+                    await session.commit()
+                except Exception as e:
+                    await session.rollback()
+                    logger.debug(f"Failed to record cv:detection event: {e}")
 
         # Get signed snapshot URL if snapshot exists
         snapshot_url = None
@@ -165,6 +301,9 @@ class CVService:
             "violating_persons": result["violating_persons"],
             "compliant": compliant,
             "missing_ppe": missing_ppe,
+            "equipment_counts": equipment_counts,
+            "machinery_hazards": machinery_hazards,
+            "has_machinery_hazard": has_machinery_hazard,
             "snapshot_key": snapshot_key,
             "snapshot_url": snapshot_url,
             "detections": detections,

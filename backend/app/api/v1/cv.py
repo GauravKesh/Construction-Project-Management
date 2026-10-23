@@ -57,6 +57,8 @@ async def analyze_frame(
         violating_persons=result["violating_persons"],
         detector=result["detector"],
         missing_ppe=result["missing_ppe"],
+        equipment_counts=result.get("equipment_counts", {}),
+        machinery_hazards=result.get("machinery_hazards", []),
         detections=result["detections"],
         snapshot_key=result.get("snapshot_key"),
         snapshot_url=snapshot_url,
@@ -97,6 +99,8 @@ async def list_cv_detections(
                 persons_count=d["persons_count"],
                 compliant=d["compliant"],
                 missing_ppe=d["missing_ppe"],
+                equipment_counts=d.get("equipment_counts", {}),
+                machinery_hazards=d.get("machinery_hazards", []),
                 snapshot_key=d.get("snapshot_key"),
                 snapshot_url=snapshot_url,
                 detections=d.get("detections", []),
@@ -167,6 +171,7 @@ async def get_cv_config(current_user: User = Depends(get_current_user)):
     return CVConfigResponse(
         cv_mode=settings.CV_MODE,
         model_path=settings.CV_MODEL_PATH,
+        model_paths=settings.CV_MODEL_PATHS,
         confidence_threshold=settings.CV_CONFIDENCE_THRESHOLD,
         inference_fps=settings.CV_INFERENCE_FPS,
         is_ml_available=ml_available,
@@ -184,6 +189,8 @@ async def update_cv_config(
         settings.CV_INFERENCE_FPS = req.inference_fps
     if req.mode is not None and req.mode in ["mock", "yolo"]:
         settings.CV_MODE = req.mode
+    if req.model_paths is not None:
+        settings.CV_MODEL_PATHS = req.model_paths
 
     try:
         import ultralytics
@@ -194,6 +201,7 @@ async def update_cv_config(
     return CVConfigResponse(
         cv_mode=settings.CV_MODE,
         model_path=settings.CV_MODEL_PATH,
+        model_paths=settings.CV_MODEL_PATHS,
         confidence_threshold=settings.CV_CONFIDENCE_THRESHOLD,
         inference_fps=settings.CV_INFERENCE_FPS,
         is_ml_available=ml_available,

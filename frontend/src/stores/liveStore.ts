@@ -31,8 +31,17 @@ export interface CVDetectionEvent {
   persons_count: number;
   compliant: boolean;
   missing_ppe: string[];
+  equipment_counts?: Record<string, number>;
+  machinery_hazards?: Array<{
+    person_bbox: [number, number, number, number];
+    machinery_bbox: [number, number, number, number];
+    machinery_type: string;
+    distance: number;
+    overlapping?: boolean;
+  }>;
   detections: CVDetectionItem[];
   snapshot_url?: string;
+  detector?: string;
 }
 
 export interface LiveAlertEvent {

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ShieldCheck,
@@ -11,7 +11,13 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
@@ -28,7 +34,9 @@ export default function SafetyPpePage() {
   const activeSiteId = useProjectStore((s) => s.activeSiteId);
   const queryClient = useQueryClient();
 
-  const [activeTab, setActiveTab] = useState<"overview" | "gallery" | "analyzer" | "config">("overview");
+  const [activeTab, setActiveTab] = useState<
+    "overview" | "gallery" | "analyzer" | "config"
+  >("overview");
   const [selectedViolation, setSelectedViolation] = useState<any | null>(null);
 
   // Analyzer state
@@ -57,6 +65,46 @@ export default function SafetyPpePage() {
     queryFn: () => apiClient.get<any>("/api/v1/safety/ppe/violations"),
   });
 
+  // Fetch cameras to resolve camera names
+  const { data: camerasData } = useQuery({
+    queryKey: ["site-cameras", activeSiteId],
+    queryFn: () => apiClient.get<any>(`/api/v1/sites/${activeSiteId}/cameras`),
+    enabled: !!activeSiteId,
+  });
+
+  const cameraMap = useMemo(() => {
+    const map = new Map<string, string>();
+    normalizeList(camerasData).forEach((c: any) => {
+      if (c.id && c.name) map.set(c.id, c.name);
+    });
+    return map;
+  }, [camerasData]);
+
+  const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({});
+
+  const getViolationImage = (v: any) => {
+    const raw = v.snapshot_url || v.image_url;
+    if (!raw) return null;
+    return raw.startsWith("/") ? `/api/proxy${raw}` : raw;
+  };
+
+  const getViolationLabel = (v: any) => {
+    if (Array.isArray(v.missing_ppe) && v.missing_ppe.length > 0) {
+      return v.missing_ppe.map((s: string) => s.replace(/_/g, " ")).join(", ");
+    }
+    if (v.violation_type) {
+      return String(v.violation_type).replace(/_/g, " ");
+    }
+    return "Missing PPE";
+  };
+
+  const getCameraName = (v: any) => {
+    if (v.camera_name) return v.camera_name;
+    if (v.camera_id && cameraMap.has(v.camera_id)) return cameraMap.get(v.camera_id);
+    if (v.camera_id) return `Camera ${v.camera_id.slice(0, 8)}`;
+    return "Site CCTV";
+  };
+
   const violations = normalizeList(violationsData);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -80,12 +128,37 @@ export default function SafetyPpePage() {
           persons_detected: 2,
           compliant: false,
           detections: [
-            { class_name: "person", confidence: 0.94, bbox: [0.15, 0.2, 0.85, 0.45] },
-            { class_name: "no_hardhat", confidence: 0.92, bbox: [0.16, 0.26, 0.32, 0.38], is_violation: true },
-            { class_name: "hi_vis_vest", confidence: 0.88, bbox: [0.34, 0.22, 0.65, 0.42] },
-            { class_name: "person", confidence: 0.91, bbox: [0.2, 0.55, 0.88, 0.8] },
-            { class_name: "hardhat", confidence: 0.95, bbox: [0.2, 0.62, 0.35, 0.74] },
-            { class_name: "hi_vis_vest", confidence: 0.89, bbox: [0.38, 0.58, 0.68, 0.78] },
+            {
+              class_name: "person",
+              confidence: 0.94,
+              bbox: [0.15, 0.2, 0.85, 0.45],
+            },
+            {
+              class_name: "no_hardhat",
+              confidence: 0.92,
+              bbox: [0.16, 0.26, 0.32, 0.38],
+              is_violation: true,
+            },
+            {
+              class_name: "hi_vis_vest",
+              confidence: 0.88,
+              bbox: [0.34, 0.22, 0.65, 0.42],
+            },
+            {
+              class_name: "person",
+              confidence: 0.91,
+              bbox: [0.2, 0.55, 0.88, 0.8],
+            },
+            {
+              class_name: "hardhat",
+              confidence: 0.95,
+              bbox: [0.2, 0.62, 0.35, 0.74],
+            },
+            {
+              class_name: "hi_vis_vest",
+              confidence: 0.89,
+              bbox: [0.38, 0.58, 0.68, 0.78],
+            },
           ],
         });
         setAnalyzing(false);
@@ -134,50 +207,65 @@ export default function SafetyPpePage() {
         <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card className="border-zinc-200 dark:border-zinc-800 p-5">
-              <span className="text-xs capitalize font-medium text-zinc-400">Frame Compliance</span>
+              <span className="text-xs capitalize font-medium text-zinc-400">
+                Frame Compliance
+              </span>
               <div className="mt-2 flex items-baseline gap-2">
                 <span className="font-mono text-3xl font-black text-emerald-500">
                   {fmtPct(ppeSummary?.compliance_rate)}
                 </span>
               </div>
               <span className="text-[11px] text-zinc-400 mt-2 block">
-                {fmtNumber(ppeSummary?.compliant_frames, 0)} of {fmtNumber(ppeSummary?.total_frames, 0)} frames
-                compliant
+                {fmtNumber(ppeSummary?.compliant_frames, 0)} of{" "}
+                {fmtNumber(ppeSummary?.total_frames, 0)} frames compliant
               </span>
             </Card>
 
             <Card className="border-zinc-200 dark:border-zinc-800 p-5">
-              <span className="text-xs capitalize font-medium text-zinc-400">Person Compliance</span>
+              <span className="text-xs capitalize font-medium text-zinc-400">
+                Person Compliance
+              </span>
               <div className="mt-2 flex items-baseline gap-2">
                 <span className="font-mono text-3xl font-black text-zinc-900 dark:text-zinc-100">
                   {fmtPct(ppeSummary?.person_compliance_rate)}
                 </span>
               </div>
               <span className="text-[11px] text-zinc-400 mt-2 block">
-                {fmtNumber(ppeSummary?.violating_persons, 0)} of {fmtNumber(ppeSummary?.total_persons, 0)} detected
-                persons missing PPE
+                {fmtNumber(ppeSummary?.violating_persons, 0)} of{" "}
+                {fmtNumber(ppeSummary?.total_persons, 0)} detected persons
+                missing PPE
               </span>
             </Card>
 
             <Card className="border-zinc-200 dark:border-zinc-800 p-5">
-              <span className="text-xs capitalize font-medium text-zinc-400">Violation Frames</span>
+              <span className="text-xs capitalize font-medium text-zinc-400">
+                Violation Frames
+              </span>
               <div className="mt-2 flex items-baseline gap-2">
                 <span className="font-mono text-3xl font-black text-zinc-900 dark:text-zinc-100">
                   {fmtNumber(ppeSummary?.violations_frames, 0)}
                 </span>
               </div>
-              <span className="text-[11px] text-zinc-400 mt-2 block">Frames with at least one violation</span>
+              <span className="text-[11px] text-zinc-400 mt-2 block">
+                Frames with at least one violation
+              </span>
             </Card>
 
             <Card className="border-zinc-200 dark:border-zinc-800 p-5">
-              <span className="text-xs capitalize font-medium text-zinc-400">Detector</span>
+              <span className="text-xs capitalize font-medium text-zinc-400">
+                Detector
+              </span>
               <div className="mt-2 flex items-baseline gap-2">
                 <span className="font-mono text-lg font-black text-zinc-900 dark:text-zinc-100 break-all">
-                  {ppeSummary?.detectors?.length ? ppeSummary.detectors.join(", ") : NO_DATA}
+                  {ppeSummary?.detectors?.length
+                    ? ppeSummary.detectors.join(", ")
+                    : NO_DATA}
                 </span>
               </div>
               <span className="text-[11px] text-zinc-400 mt-2 block">
-                {ppeSummary?.detectors?.some((d: string) => d.startsWith("mock"))
+                {ppeSummary?.detectors?.some((d: string) =>
+                  d.startsWith("mock"),
+                )
                   ? "Includes MOCK detections: synthetic, not real model output"
                   : "Source of the detections above"}
               </span>
@@ -192,7 +280,8 @@ export default function SafetyPpePage() {
                   Latest Captured Violations
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Snapshots flagged by CCTV inference nodes awaiting supervisor review.
+                  Snapshots flagged by CCTV inference nodes awaiting supervisor
+                  review.
                 </CardDescription>
               </div>
               <Button
@@ -206,33 +295,58 @@ export default function SafetyPpePage() {
             </CardHeader>
             <CardContent className="p-5 pt-0">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {violations.slice(0, 3).map((v) => (
-                  <div
-                    key={v.id}
-                    onClick={() => setSelectedViolation(v)}
-                    className="group cursor-pointer rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden bg-zinc-900 hover:border-amber-500 transition-all"
-                  >
-                    <div className="relative aspect-video w-full bg-zinc-950 overflow-hidden">
-                      <img
-                        src={v.image_url}
-                        alt="Violation snapshot"
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                      <div className="absolute top-2 left-2">
-                        <Badge variant="destructive" className="text-xs capitalize">
-                          {v.violation_type.replace("_", " ")}
-                        </Badge>
+                {violations.slice(0, 3).map((v: any, idx: number) => {
+                  const imgUrl = getViolationImage(v);
+                  const itemKey = v.id || v.snapshot_key || idx;
+                  const isBroken = !imgUrl || brokenImages[itemKey];
+                  const label = getViolationLabel(v);
+                  const camName = getCameraName(v);
+                  return (
+                    <div
+                      key={itemKey}
+                      onClick={() => setSelectedViolation(v)}
+                      className="group cursor-pointer rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden bg-zinc-900 hover:border-amber-500 transition-all"
+                    >
+                      <div className="relative aspect-video w-full bg-zinc-950 overflow-hidden">
+                        {isBroken ? (
+                          <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-900 text-zinc-500 gap-1.5 p-4 text-center">
+                            <ImageIcon className="h-8 w-8 text-zinc-600" />
+                            <span className="text-[11px] font-medium text-zinc-400">Snapshot Recorded</span>
+                            <span className="text-[10px] text-zinc-500">{new Date(v.ts).toLocaleTimeString()}</span>
+                          </div>
+                        ) : (
+                          <img
+                            src={imgUrl}
+                            alt="Violation snapshot"
+                            onError={() => setBrokenImages((prev) => ({ ...prev, [itemKey]: true }))}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        )}
+                        <div className="absolute top-2 left-2">
+                          <Badge
+                            variant="destructive"
+                            className="text-xs capitalize"
+                          >
+                            {label}
+                          </Badge>
+                        </div>
+                      </div>
+                      <div className="p-3 text-xs">
+                        <span className="font-semibold text-zinc-200">
+                          {camName}
+                        </span>
+                        <div className="mt-1 flex items-center justify-between text-[11px] text-zinc-400">
+                          <span>
+                            {typeof v.confidence === "number" && !isNaN(v.confidence)
+                              ? `Confidence: ${(v.confidence * 100).toFixed(0)}%`
+                              : `Persons: ${v.persons_count ?? 1}`}
+                          </span>
+                          <span>{new Date(v.ts).toLocaleTimeString()}</span>
+                        </div>
                       </div>
                     </div>
-                    <div className="p-3 text-xs">
-                      <span className="font-semibold text-zinc-200">{v.camera_name}</span>
-                      <div className="mt-1 flex items-center justify-between text-[11px] text-zinc-400">
-                        <span>Confidence: {(v.confidence * 100).toFixed(0)}%</span>
-                        <span>{new Date(v.ts).toLocaleTimeString()}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
@@ -241,40 +355,62 @@ export default function SafetyPpePage() {
         {/* Tab 2: Full Violation Gallery */}
         <TabsContent value="gallery" className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {violations.map((v) => (
-              <Card
-                key={v.id}
-                onClick={() => setSelectedViolation(v)}
-                className="cursor-pointer border-zinc-200 dark:border-zinc-800 overflow-hidden hover:border-amber-500 transition-all"
-              >
-                <div className="relative aspect-video w-full bg-zinc-950">
-                  <img
-                    src={v.image_url}
-                    alt="Violation snapshot"
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute top-2 left-2 flex gap-2">
-                    <Badge variant="destructive" className="text-xs capitalize">
-                      {v.violation_type.replace("_", " ")}
-                    </Badge>
+            {violations.map((v: any, idx: number) => {
+              const imgUrl = getViolationImage(v);
+              const itemKey = v.id || v.snapshot_key || idx;
+              const isBroken = !imgUrl || brokenImages[itemKey];
+              const label = getViolationLabel(v);
+              const camName = getCameraName(v);
+              return (
+                <Card
+                  key={itemKey}
+                  onClick={() => setSelectedViolation(v)}
+                  className="cursor-pointer border-zinc-200 dark:border-zinc-800 overflow-hidden hover:border-amber-500 transition-all bg-zinc-900"
+                >
+                  <div className="relative aspect-video w-full bg-zinc-950 overflow-hidden">
+                    {isBroken ? (
+                      <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-900 text-zinc-500 gap-1.5 p-4 text-center">
+                        <ImageIcon className="h-8 w-8 text-zinc-600" />
+                        <span className="text-[11px] font-medium text-zinc-400">Snapshot Recorded</span>
+                        <span className="text-[10px] text-zinc-500">{new Date(v.ts).toLocaleTimeString()}</span>
+                      </div>
+                    ) : (
+                      <img
+                        src={imgUrl}
+                        alt="Violation snapshot"
+                        onError={() => setBrokenImages((prev) => ({ ...prev, [itemKey]: true }))}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    )}
+                    <div className="absolute top-2 left-2 flex gap-2">
+                      <Badge variant="destructive" className="text-xs capitalize">
+                        {label}
+                      </Badge>
+                    </div>
                   </div>
-                </div>
-                <div className="p-4 space-y-2 text-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-zinc-100">{v.camera_name}</span>
-                    <span className="font-mono text-[10px] text-zinc-400">
-                      {new Date(v.ts).toLocaleTimeString()}
-                    </span>
+                  <div className="p-4 space-y-2 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-zinc-100">
+                        {camName}
+                      </span>
+                      <span className="font-mono text-[10px] text-zinc-400">
+                        {new Date(v.ts).toLocaleTimeString()}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] text-zinc-400">
+                      <span>
+                        {typeof v.confidence === "number" && !isNaN(v.confidence)
+                          ? `AI Confidence: ${(v.confidence * 100).toFixed(0)}%`
+                          : `Persons: ${v.persons_count ?? 1}`}
+                      </span>
+                      <Badge variant="outline" className="text-xs capitalize">
+                        {v.status || "Unreviewed"}
+                      </Badge>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between text-[11px] text-zinc-400">
-                    <span>AI Confidence: {(v.confidence * 100).toFixed(0)}%</span>
-                    <Badge variant="outline" className="text-xs capitalize">
-                      {v.status}
-                    </Badge>
-                  </div>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              );
+            })}
           </div>
         </TabsContent>
 
@@ -286,7 +422,8 @@ export default function SafetyPpePage() {
                 Interactive Computer Vision Tester
               </CardTitle>
               <CardDescription className="text-xs">
-                Upload any construction site photo to run immediate YOLOv8 PPE detection and bounding box extraction.
+                Upload any construction site photo to run immediate YOLOv8 PPE
+                detection and bounding box extraction.
               </CardDescription>
             </CardHeader>
             <CardContent className="p-5 pt-0 space-y-4">
@@ -298,7 +435,9 @@ export default function SafetyPpePage() {
                     <span className="text-xs font-semibold text-zinc-200">
                       Click to choose an image or drag & drop
                     </span>
-                    <span className="text-[10px] text-zinc-500 mt-1">PNG, JPG, WebP up to 10MB</span>
+                    <span className="text-[10px] text-zinc-500 mt-1">
+                      PNG, JPG, WebP up to 10MB
+                    </span>
                     <input
                       type="file"
                       accept="image/*"
@@ -316,7 +455,9 @@ export default function SafetyPpePage() {
                       className="w-full gap-2 font-bold"
                     >
                       <Sparkles className="h-4 w-4" />
-                      {analyzing ? "Running YOLOv8 Inference..." : "Analyze Image Now"}
+                      {analyzing
+                        ? "Running YOLOv8 Inference..."
+                        : "Analyze Image Now"}
                     </Button>
                   )}
                 </div>
@@ -332,8 +473,16 @@ export default function SafetyPpePage() {
                       />
                       {analysisResult && (
                         <div className="absolute top-2 right-2 z-10">
-                          <Badge variant={analysisResult.compliant ? "success" : "destructive"}>
-                            {analysisResult.compliant ? "Compliant" : "Violation Detected"}
+                          <Badge
+                            variant={
+                              analysisResult.compliant
+                                ? "success"
+                                : "destructive"
+                            }
+                          >
+                            {analysisResult.compliant
+                              ? "Compliant"
+                              : "Violation Detected"}
                           </Badge>
                         </div>
                       )}
@@ -352,18 +501,21 @@ export default function SafetyPpePage() {
                         Detected Objects:
                       </span>
                       <div className="flex flex-wrap gap-2">
-                        {analysisResult.detections.map((d: any, idx: number) => (
-                          <span
-                            key={idx}
-                            className={`px-2 py-0.5 rounded text-[11px] font-mono font-semibold ${
-                              d.is_violation
-                                ? "bg-red-500/20 text-red-500 dark:text-red-400 border border-red-500/40"
-                                : "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40"
-                            }`}
-                          >
-                            {d.class_name.toUpperCase()} ({(d.confidence * 100).toFixed(0)}%)
-                          </span>
-                        ))}
+                        {analysisResult.detections.map(
+                          (d: any, idx: number) => (
+                            <span
+                              key={idx}
+                              className={`px-2 py-0.5 rounded text-[11px] font-mono font-semibold ${
+                                d.is_violation
+                                  ? "bg-red-500/20 text-red-500 dark:text-red-400 border border-red-500/40"
+                                  : "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40"
+                              }`}
+                            >
+                              {d.class_name.toUpperCase()} (
+                              {(d.confidence * 100).toFixed(0)}%)
+                            </span>
+                          ),
+                        )}
                       </div>
                     </div>
                   )}
@@ -381,14 +533,19 @@ export default function SafetyPpePage() {
                 Inference Model Tuning & Alert Rules
               </CardTitle>
               <CardDescription className="text-xs">
-                Fine-tune confidence thresholds and instant notification parameters for edge CV nodes.
+                Fine-tune confidence thresholds and instant notification
+                parameters for edge CV nodes.
               </CardDescription>
             </CardHeader>
             <CardContent className="p-5 pt-0 space-y-6">
               <div className="space-y-3">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-zinc-800 dark:text-zinc-200">Minimum Confidence Threshold</span>
-                  <span className="font-mono font-bold text-amber-500">{confThreshold}%</span>
+                  <span className="font-semibold text-zinc-800 dark:text-zinc-200">
+                    Minimum Confidence Threshold
+                  </span>
+                  <span className="font-mono font-bold text-amber-500">
+                    {confThreshold}%
+                  </span>
                 </div>
                 <Slider
                   value={[confThreshold]}
@@ -398,29 +555,46 @@ export default function SafetyPpePage() {
                   step={5}
                 />
                 <span className="text-[11px] text-zinc-500">
-                  Detections below this threshold are ignored to prevent false alarms.
+                  Detections below this threshold are ignored to prevent false
+                  alarms.
                 </span>
               </div>
 
               <div className="space-y-4 pt-4 border-t border-zinc-200 dark:border-zinc-800">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h4 className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">Instant Alert: Missing Hard Hat</h4>
-                    <p className="text-[11px] text-zinc-500">Emit live warning alert and notify safety officer</p>
+                    <h4 className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                      Instant Alert: Missing Hard Hat
+                    </h4>
+                    <p className="text-[11px] text-zinc-500">
+                      Emit live warning alert and notify safety officer
+                    </p>
                   </div>
-                  <Switch checked={alertHardhat} onCheckedChange={setAlertHardhat} />
+                  <Switch
+                    checked={alertHardhat}
+                    onCheckedChange={setAlertHardhat}
+                  />
                 </div>
 
                 <div className="flex items-center justify-between">
                   <div>
-                    <h4 className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">Instant Alert: Missing Hi-Vis Vest</h4>
-                    <p className="text-[11px] text-zinc-500">Notify gate security if vest missing in vehicle zone</p>
+                    <h4 className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                      Instant Alert: Missing Hi-Vis Vest
+                    </h4>
+                    <p className="text-[11px] text-zinc-500">
+                      Notify gate security if vest missing in vehicle zone
+                    </p>
                   </div>
                   <Switch checked={alertVest} onCheckedChange={setAlertVest} />
                 </div>
               </div>
 
-              <Button variant="amber" size="sm" onClick={handleSaveConfig} className="gap-2 font-bold">
+              <Button
+                variant="amber"
+                size="sm"
+                onClick={handleSaveConfig}
+                className="gap-2 font-bold"
+              >
                 <CheckCircle2 className="h-4 w-4" />
                 Apply Configuration
               </Button>
@@ -431,30 +605,71 @@ export default function SafetyPpePage() {
 
       {/* Violation Lightbox Modal */}
       {selectedViolation && (
-        <Dialog open={!!selectedViolation} onOpenChange={() => setSelectedViolation(null)}>
+        <Dialog
+          open={!!selectedViolation}
+          onOpenChange={() => setSelectedViolation(null)}
+        >
           <DialogContent className="max-w-2xl bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 p-0 overflow-hidden">
-            <div className="relative aspect-video w-full bg-zinc-950">
-              <img
-                src={selectedViolation.image_url}
-                alt="Enlarged snapshot"
-                className="w-full h-full object-contain"
-              />
+            <div className="relative aspect-video w-full bg-zinc-950 flex items-center justify-center">
+              {(() => {
+                const imgUrl = getViolationImage(selectedViolation);
+                const isBroken =
+                  !imgUrl ||
+                  brokenImages[
+                    selectedViolation.id ||
+                      selectedViolation.snapshot_key ||
+                      "modal"
+                  ];
+                if (isBroken) {
+                  return (
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-900 text-zinc-500 gap-2 p-6 text-center">
+                      <ImageIcon className="h-12 w-12 text-zinc-600" />
+                      <span className="text-xs font-medium text-zinc-400">
+                        Snapshot Stored Locally
+                      </span>
+                      <span className="text-[11px] text-zinc-500 font-mono">
+                        {selectedViolation.snapshot_key || "No direct file"}
+                      </span>
+                    </div>
+                  );
+                }
+                return (
+                  <img
+                    src={imgUrl}
+                    alt="Enlarged snapshot"
+                    onError={() =>
+                      setBrokenImages((prev) => ({
+                        ...prev,
+                        [selectedViolation.id ||
+                        selectedViolation.snapshot_key ||
+                        "modal"]: true,
+                      }))
+                    }
+                    className="w-full h-full object-contain"
+                  />
+                );
+              })()}
               <div className="absolute top-3 left-3">
                 <Badge variant="destructive" className="capitalize">
-                  {selectedViolation.violation_type.replace("_", " ")}
+                  {getViolationLabel(selectedViolation)}
                 </Badge>
               </div>
             </div>
             <div className="p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-base font-bold text-zinc-900 dark:text-white">{selectedViolation.camera_name}</h3>
+                  <h3 className="text-base font-bold text-zinc-900 dark:text-white">
+                    {getCameraName(selectedViolation)}
+                  </h3>
                   <span className="text-xs text-zinc-600 dark:text-zinc-400 font-mono">
                     Captured: {new Date(selectedViolation.ts).toLocaleString()}
                   </span>
                 </div>
                 <span className="font-mono text-xs font-semibold text-amber-500">
-                  Confidence: {(selectedViolation.confidence * 100).toFixed(1)}%
+                  {typeof selectedViolation.confidence === "number" &&
+                  !isNaN(selectedViolation.confidence)
+                    ? `Confidence: ${(selectedViolation.confidence * 100).toFixed(1)}%`
+                    : `Persons Detected: ${selectedViolation.persons_count ?? 1}`}
                 </span>
               </div>
 
@@ -474,7 +689,9 @@ export default function SafetyPpePage() {
                   variant="destructive"
                   size="sm"
                   onClick={() => {
-                    toast.success("Incident ticket created from violation snapshot");
+                    toast.success(
+                      "Incident ticket created from violation snapshot",
+                    );
                     setSelectedViolation(null);
                   }}
                   className="text-xs font-semibold"

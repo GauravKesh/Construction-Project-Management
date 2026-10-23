@@ -112,6 +112,7 @@ class Settings(BaseSettings):
     FEATURE_POSTGIS: bool = False
     CV_MODE: Literal["mock", "yolo"] = "mock"
     CV_MODEL_PATH: str = "./data/models/yolov8n.pt"
+    CV_MODEL_PATHS: Optional[str] = "./data/models/yolov8n.pt,./data/models/construction_ppe.pt"
     CV_CONFIDENCE_THRESHOLD: float = 0.45
     CV_INFERENCE_FPS: int = 2
     # Where camera URLs of the form "/videos/<file>" are found on disk (the browser
@@ -121,6 +122,10 @@ class Settings(BaseSettings):
     # detection is still recorded; this only stops one ongoing violation raising an
     # alert per frame.
     PPE_ALERT_COOLDOWN_SECONDS: int = 300
+    # Minimum seconds between machinery proximity hazard alerts from the same camera
+    MACHINERY_ALERT_COOLDOWN_SECONDS: int = 180
+    # Distance in pixels between worker box and machinery box to trigger proximity hazard
+    MACHINERY_PROXIMITY_MARGIN_PX: float = 60.0
     # Camera frames are pulled and served at this rate for live viewing; PPE detection
     # runs on a subset of them at the camera's own analysis rate (Camera.fps).
     CAMERA_VIEW_FPS: int = 10

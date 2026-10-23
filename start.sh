@@ -162,11 +162,17 @@ echo ">> [4/4] Starting Video Stream & CV PPE Safety Handler..."
 "${PYTHON}" -m app.cli video-handler &
 PIDS+=($!)
 
-# Optional: IoT Sensor Simulator
-if [ "$1" == "--with-sim" ] || [ "$ENABLE_SIMULATOR" == "true" ]; then
-    echo ">> [OPTIONAL] Starting Live IoT Sensor Simulator..."
-    "${PYTHON}" scripts/mqtt_sensor_simulator.py &
-    PIDS+=($!)
+# Optional: IoT Sensor & Camera Simulator
+if [ "$1" == "--with-sim" ] || [ "$1" == "--with-cameras" ] || [ "$1" == "--with-devices" ] || [ "$ENABLE_SIMULATOR" == "true" ]; then
+    if [ -f "${ROOT_DIR}/device-simulator/start.sh" ]; then
+        echo ">> [OPTIONAL] Starting Device & Camera Simulator (http://localhost:8090)..."
+        "${ROOT_DIR}/device-simulator/start.sh" &
+        PIDS+=($!)
+    else
+        echo ">> [OPTIONAL] Starting Live IoT Sensor Simulator..."
+        "${PYTHON}" scripts/mqtt_sensor_simulator.py &
+        PIDS+=($!)
+    fi
 fi
 
 echo "=========================================================="
@@ -179,7 +185,7 @@ echo " • Liveness Health:    http://localhost:8000/health/live"
 echo " • Readiness Health:   http://localhost:8000/health/ready"
 echo " • Prometheus Metrics: http://localhost:8000/metrics"
 echo "=========================================================="
-echo " Tip: Run './start.sh --with-sim' to also launch the IoT simulator."
+echo " Tip: Run './start.sh --with-sim' to also launch the camera feeds & IoT simulator (:8090)."
 echo " Press Ctrl+C at any time to cleanly stop all services."
 echo "=========================================================="
 

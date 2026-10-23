@@ -105,11 +105,14 @@ class CVConfigUpdate(BaseModel):
     confidence_threshold: Optional[float] = Field(default=None, ge=0.1, le=1.0)
     inference_fps: Optional[int] = Field(default=None, ge=1, le=30)
     mode: Optional[str] = None
+    model_paths: Optional[str] = None
 
 
 class CVConfigResponse(BaseModel):
     cv_mode: str
     model_path: str
+    model_paths: Optional[str] = None
     confidence_threshold: float
     inference_fps: int
     is_ml_available: bool
+

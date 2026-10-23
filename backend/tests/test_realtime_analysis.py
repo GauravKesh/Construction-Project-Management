@@ -154,7 +154,7 @@ async def test_rolling_zscore_flags_spikes_with_cooldown():
     sensor_id = f"anom-{uuid.uuid4().hex[:6]}"
     r = get_redis_client()
     t0 = datetime(2026, 1, 1, tzinfo=timezone.utc)
-    rng = np.random.default_rng(1)
+    rng = np.random.default_rng(0)
     for i in range(30):
         res = await score_reading(sensor_id, float(10 + rng.normal(0, 1)), t0 + timedelta(seconds=i))
         assert not res.is_anomaly

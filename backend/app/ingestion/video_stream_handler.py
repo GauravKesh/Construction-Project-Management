@@ -177,6 +177,8 @@ class CameraStreamWorker:
         self.latest_frame_jpeg: Optional[bytes] = None
         self._running = False
         self._task: Optional[asyncio.Task] = None
+        self._analysis_task: Optional[asyncio.Task] = None
+        self._analysis_queue: asyncio.Queue = asyncio.Queue(maxsize=1)
         self._recorder = SegmentRecorder(camera_id) if settings.CAMERA_RECORDING_ENABLED else None
         self._security = None
         if settings.SECURITY_ANALYSIS_ENABLED:
@@ -189,15 +191,43 @@ class CameraStreamWorker:
             return
         self._running = True
         self._task = asyncio.create_task(self._run_loop())
+        self._analysis_task = asyncio.create_task(self._run_analysis_loop())
 
     async def stop(self) -> None:
         self._running = False
-        if self._task and not self._task.done():
-            self._task.cancel()
+        for t in (self._task, self._analysis_task):
+            if t and not t.done():
+                t.cancel()
+                try:
+                    await t
+                except asyncio.CancelledError:
+                    pass
+
+    async def _run_analysis_loop(self) -> None:
+        """Decoupled CV analysis loop with dropped-frame queue of size 1 so streaming never stalls."""
+        while self._running:
             try:
-                await self._task
+                frame_item = await self._analysis_queue.get()
+                frame, jpeg_bytes, frame_no = frame_item
+                try:
+                    result = await cv_service.process_frame(
+                        camera_id=self.camera_id,
+                        site_id=self.site_id,
+                        frame_bytes=jpeg_bytes,
+                        frame_ndarray=frame,
+                    )
+                    if self._security:
+                        persons = result["persons_count"] if str(result.get("detector", "")).startswith("yolo") else None
+                        await self._security.analyse(frame, persons)
+                except Exception as e:
+                    logger.error(f"Error in CV analysis for camera {self.camera_id}: {e}", exc_info=True)
+                finally:
+                    self._analysis_queue.task_done()
             except asyncio.CancelledError:
-                pass
+                break
+            except Exception as e:
+                logger.error(f"Unexpected error in analysis queue worker for camera {self.camera_id}: {e}")
+                await asyncio.sleep(0.5)
 
     async def _publish(self, jpeg_bytes: bytes) -> None:
         """Share the latest frame with other processes (the API serves snapshots/MJPEG from it)."""
@@ -276,17 +306,18 @@ class CameraStreamWorker:
                 if self._recorder:
                     await asyncio.to_thread(self._recorder.write, frame)
 
-                # PPE analysis runs at the camera's analysis rate, not the viewing rate
+                # PPE and equipment analysis runs decoupled from video streaming
                 if frame_no % self.analyze_every == 0:
-                    result = await cv_service.process_frame(
-                        camera_id=self.camera_id,
-                        site_id=self.site_id,
-                        frame_bytes=jpeg_bytes,
-                    )
-                    if self._security:
-                        # Person counts only from a real model; the mock does not look at the image
-                        persons = result["persons_count"] if str(result.get("detector", "")).startswith("yolo") else None
-                        await self._security.analyse(frame, persons)
+                    if self._analysis_queue.full():
+                        try:
+                            self._analysis_queue.get_nowait()
+                            self._analysis_queue.task_done()
+                        except (asyncio.QueueEmpty, ValueError):
+                            pass
+                    try:
+                        self._analysis_queue.put_nowait((frame.copy(), jpeg_bytes, frame_no))
+                    except (asyncio.QueueFull, Exception):
+                        pass
                 frame_no += 1
 
             except asyncio.CancelledError:
